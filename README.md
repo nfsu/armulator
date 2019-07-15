@@ -27,8 +27,8 @@ struct PSR {
   
     //Control bits
     
-    Mode mode : 5;				//The execution mode
-    bool thumb : 1;				//T; if thumb mode is used
+    Mode mode : 5;			//The execution mode
+    bool thumb : 1;			//T; if thumb mode is used
     bool disableFiq : 1;		//F: if FIQ is disabled
     bool disableIrq : 1;		//I: if IRQ is disabled
     
@@ -39,8 +39,8 @@ struct PSR {
     //Condition flags
     
     bool overflow : 1;			//V: the last operation caused a signed overflow
-    bool carry : 1;				//C: the last operation caused an unsigned overflow
-    bool zero : 1;				//Z: the last operation was zero
+    bool carry : 1;			//C: the last operation caused an unsigned overflow
+    bool zero : 1;			//Z: the last operation was zero
     bool negative : 1;			//N: the last operation was negative
     
 };
@@ -51,26 +51,26 @@ struct PSR {
 ```cpp
 enum Condition : u8 /* 4-bit */ {
   
-    EQ,		//Equals							(zero)
-    NE,		//Not Equals 						(!zero)
+    EQ,		//Equals					(zero)
+    NE,		//Not Equals 					(!zero)
     
-    CS,		//Carry Set; 		unsigned >= 	(carry)
+    CS,		//Carry Set; 		unsigned >= 		(carry)
     CC,		//Carry Clear;		unsigned <		(!carry)
     
-    MI,		//MInus;			< 0				(negative)
-    PL,		//PLus;				>= 0			(!negative)
+    MI,		//MInus;			< 0		(negative)
+    PL,		//PLus;				>= 0		(!negative)
     
-    VS,		//oVerflow Set						(overflow)
-    VC,		//oVerflow Clear					(!overflow)
+    VS,		//oVerflow Set					(overflow)
+    VC,		//oVerflow Clear				(!overflow)
     
     HI,		//Higher than		unsigned >		(carry && !zero)
     LS,		//Less or equal		unsigned <=		(!carry || zero)
     
-    GE,		//Greater or equal	>=				(negative == overflow)
-    LT,		//Less				<				(negative != overflow)
+    GE,		//Greater or equal	>=			(negative == overflow)
+    LT,		//Less				<		(negative != overflow)
     
-    GT,		//Greater			>				(!zero && negative == overflow)
-    LE,		//Less or equal		<=				(zero || negative != overflow)
+    GT,		//Greater			>		(!zero && negative == overflow)
+    LE,		//Less or equal		<=			(zero || negative != overflow)
     
     AL,		//Always
     NV		//Never (software interrupt)
@@ -179,7 +179,7 @@ static constexpr u8 registerMapping[][16] = {
 	{ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 25, 26, 15 },			//SVC
 	{ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 27, 28, 15 },			//ABT
 	{ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 29, 30, 15 },			//UND
-	{ -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1 }	//Invalid
+	{ -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1 }		//Invalid
 };
 
 //registerMapping[modeToId[FIQ]][9] = r9_fiq
