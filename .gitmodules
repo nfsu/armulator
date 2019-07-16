@@ -1,0 +1,3 @@
+[submodule "core2"]
+	path = core2
+	url = https://github.com/Nielsbishere/core2

@@ -2,13 +2,15 @@
 
 ARM7/ARM9 are 16/32-bit RISC architectures where every opcode is 1 unit. In ARM-mode this would be 4 bytes, while in Thumb-mode this would be 2 bytes.
 
-ARM7TDMI & ARM9TDMI contain 36 32-bit **registers** which can be accessed through virtual registers, which change physical register depending on the current active mode. This also contains the PSRs (Program Status Registers); the **CPSR** (Current PSR) and the **SPSR** (Saved PSR). The SPSR is used to save the CPSR when a software interrupt is triggered. This allows you to go back to function the interrupt was called from.
+ARM7TDMI & ARM9TDMI contain 38 32-bit **registers** which can be accessed through virtual registers, which change physical register depending on the current active mode. This also contains the PSRs (Program Status Registers); the **CPSR** (Current PSR) and the **SPSR** (Saved PSR). The SPSR is used to save the CPSR when a software interrupt is triggered. This allows you to go back to function the interrupt was called from.
 
 The accessible registers are the r0-r15 registers. r15 is the **PC** (program counter) which points to the current instruction. r14 is the **LR** (link register) which is used to hold a backup to the previous PC when a jump with link is performed. r13 is the **SP** (stack pointer) which points to the top (or bottom) of the stack.
 
+The stack is Full Descending and virtual memory access depends on the current system.
+
 ## Thumb mode
 
-The T in ARM7/9TDMI stands for Thumb; a 16-bit mode. This is a simplified instruction set though it still allows for doing almost the same things, albeit in more instructions. It only allows access to r0-r7 and the LR, SP and PC are accessible through instructions.
+The T in ARM7/9TDMI stands for Thumb; a 16-bit mode. This is a simplified instruction set though it still allows for doing almost the same things, albeit in more instructions. Regular instructions only allows access to r0-r7, though other registers can be manipulated by using the r0-r7 registers as an intermediate and by specialized instructions.
 
 The entire documentation on the instruction set can be found [here](docs/thumb.md).
 
@@ -32,9 +34,11 @@ struct PSR {
     bool disableFiq : 1;		//F: if FIQ is disabled
     bool disableIrq : 1;		//I: if IRQ is disabled
     
-    //Unused for ARM7/9TDMI
-    
-    u32 padding : 20;
+	//Unused for ARM7/9TDMI (20 bits)
+    //Padding 2 bytes + 4 bits
+
+	u8 p0[2];
+	u8 p1 : 4;
     
     //Condition flags
     
@@ -133,7 +137,7 @@ To check for validity in a PSR mode, the following function can be used
 
 ```cpp
 bool isValid(Mode m){
-    return (m & USER) && ((m & 3) == 3 || m < SVC);
+    return (m & USR) && ((m & 3) == 3 || m < SVC);
 }
 ```
 
@@ -152,7 +156,7 @@ r0-r15 and the SPSR are mapped to physical registers. These registers depend on 
 The SPSR, SP and LR are always affected and for FIQ the r8-r12 registers are as well. The r8_fiq is a different physical register than the regular r8. The mapping is as follows:
 
 ```cpp
-struct RegisterBanks {
+struct RegisterData {
     
 	u32 sysUsr[15];
 	u32 pc;
@@ -178,8 +182,7 @@ static constexpr u8 registerMapping[][16] = {
 	{ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 23, 24, 15 },			//IRQ
 	{ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 25, 26, 15 },			//SVC
 	{ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 27, 28, 15 },			//ABT
-	{ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 29, 30, 15 },			//UND
-	{ -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1 }		//Invalid
+	{ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 29, 30, 15 }			//UND
 };
 
 //registerMapping[modeToId[FIQ]][9] = r9_fiq
