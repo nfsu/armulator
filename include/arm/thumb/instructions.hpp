@@ -1,10 +1,12 @@
 #pragma once
 #include "reg_op.hpp"
+#include "../condition.hpp"
+#include "types/bitset.hpp"
 
 namespace arm::thumb {
 
 	//First 5-bits of an opcode (RegOp5b)
-	enum OpCode5 : Value5 {
+	enum OpCode5 : u8 {
 
 		LSL			= 0b0'0000,
 		LSR			= 0b0'0001,
@@ -39,7 +41,7 @@ namespace arm::thumb {
 	};
 
 	//Extended 7-bit opcodes (RegOp3b)
-	enum OpCode7 : Value7 {
+	enum OpCode7 : u8 {
 
 		ADD_R		= 0b0'0011'00,
 		SUB_R		= 0b0'0011'01,
@@ -53,12 +55,16 @@ namespace arm::thumb {
 		LDR			= 0b0'1011'00,
 		LDRH		= 0b0'1011'01,
 		LDRB		= 0b0'1011'10,
-		LDSH		= 0b0'1011'11
+		LDSH		= 0b0'1011'11,
+
+		ADD_TO_SP = 0b1'0110'00,
+		PUSH = 0b1'0110'10,
+		POP = 0b1'0111'10
 
 	};
 
 	//Extended 10-bit opcodes (RegOp0b)
-	enum OpCode10 : Value10 {
+	enum OpCode10 : u16 {
 
 		AND			= 0b0'0011'0'0000,
 		EOR			= 0b0'0011'0'0001,
@@ -92,80 +98,94 @@ namespace arm::thumb {
 
 	//RegOp0b
 
-	static constexpr TI and (LoReg Rd, LoReg Rs) { return RegOp0b{ Rd, Rs, AND }.v; }
-	static constexpr TI eor(LoReg Rd, LoReg Rs) { return RegOp0b{ Rd, Rs, EOR }.v; }
-	static constexpr TI lsl(LoReg Rd, LoReg Rs) { return RegOp0b{ Rd, Rs, LSL_R }.v; }
-	static constexpr TI lsr(LoReg Rd, LoReg Rs) { return RegOp0b{ Rd, Rs, LSR_R }.v; }
-	static constexpr TI asr(LoReg Rd, LoReg Rs) { return RegOp0b{ Rd, Rs, ASR_R }.v; }
-	static constexpr TI adc(LoReg Rd, LoReg Rs) { return RegOp0b{ Rd, Rs, ADC }.v; }
-	static constexpr TI sbc(LoReg Rd, LoReg Rs) { return RegOp0b{ Rd, Rs, SBC }.v; }
-	static constexpr TI ror(LoReg Rd, LoReg Rs) { return RegOp0b{ Rd, Rs, ROR }.v; }
-	static constexpr TI tst(LoReg Rd, LoReg Rs) { return RegOp0b{ Rd, Rs, TST }.v; }
-	static constexpr TI neg(LoReg Rd, LoReg Rs) { return RegOp0b{ Rd, Rs, NEG }.v; }
-	static constexpr TI cmp(LoReg Rd, LoReg Rs) { return RegOp0b{ Rd, Rs, CMP_R }.v; }
-	static constexpr TI cmn(LoReg Rd, LoReg Rs) { return RegOp0b{ Rd, Rs, CMN }.v; }
-	static constexpr TI orr(LoReg Rd, LoReg Rs) { return RegOp0b{ Rd, Rs, ORR }.v; }
-	static constexpr TI mul(LoReg Rd, LoReg Rs) { return RegOp0b{ Rd, Rs, MUL }.v; }
-	static constexpr TI bic(LoReg Rd, LoReg Rs) { return RegOp0b{ Rd, Rs, BIC }.v; }
-	static constexpr TI mvn(LoReg Rd, LoReg Rs) { return RegOp0b{ Rd, Rs, MVN }.v; }
-	static constexpr TI add(LoReg Rd, HiReg Hs) { return RegOp0b{ Rd, Hs, ADD_LO_HI }.v; }
-	static constexpr TI add(HiReg Hd, LoReg Rs) { return RegOp0b{ Hd, Rs, ADD_HI_LO }.v; }
-	static constexpr TI add(HiReg Hd, HiReg Hs) { return RegOp0b{ Hd, Hs, ADD_HI_HI }.v; }
-	static constexpr TI cmp(LoReg Rd, HiReg Hs) { return RegOp0b{ Rd, Hs, CMP_LO_HI }.v; }
-	static constexpr TI cmp(HiReg Hd, LoReg Rs) { return RegOp0b{ Hd, Rs, CMP_HI_LO }.v; }
-	static constexpr TI cmp(HiReg Hd, HiReg Hs) { return RegOp0b{ Hd, Hs, CMP_HI_HI }.v; }
-	static constexpr TI mov(LoReg Rd, HiReg Hs) { return RegOp0b{ Rd, Hs, MOV_LO_HI }.v; }
-	static constexpr TI mov(HiReg Hd, LoReg Rs) { return RegOp0b{ Hd, Rs, MOV_HI_LO }.v; }
-	static constexpr TI mov(HiReg Hd, HiReg Hs) { return RegOp0b{ Hd, Hs, MOV_HI_HI }.v; }
-	static constexpr TI bx(LoReg Rs) { return RegOp0b{ 0, Rs, BX_LO }.v; }
-	static constexpr TI bx(HiReg Hs) { return RegOp0b{ 0, Hs, BX_HI }.v; }
+	static inline TI and(LoReg Rd, LoReg Rs) { return RegOp0b{ Rd, Rs, AND }.v; }
+	static inline TI eor(LoReg Rd, LoReg Rs) { return RegOp0b{ Rd, Rs, EOR }.v; }
+	static inline TI lsl(LoReg Rd, LoReg Rs) { return RegOp0b{ Rd, Rs, LSL_R }.v; }
+	static inline TI lsr(LoReg Rd, LoReg Rs) { return RegOp0b{ Rd, Rs, LSR_R }.v; }
+	static inline TI asr(LoReg Rd, LoReg Rs) { return RegOp0b{ Rd, Rs, ASR_R }.v; }
+	static inline TI adc(LoReg Rd, LoReg Rs) { return RegOp0b{ Rd, Rs, ADC }.v; }
+	static inline TI sbc(LoReg Rd, LoReg Rs) { return RegOp0b{ Rd, Rs, SBC }.v; }
+	static inline TI ror(LoReg Rd, LoReg Rs) { return RegOp0b{ Rd, Rs, ROR }.v; }
+	static inline TI tst(LoReg Rd, LoReg Rs) { return RegOp0b{ Rd, Rs, TST }.v; }
+	static inline TI neg(LoReg Rd, LoReg Rs) { return RegOp0b{ Rd, Rs, NEG }.v; }
+	static inline TI cmp(LoReg Rd, LoReg Rs) { return RegOp0b{ Rd, Rs, CMP_R }.v; }
+	static inline TI cmn(LoReg Rd, LoReg Rs) { return RegOp0b{ Rd, Rs, CMN }.v; }
+	static inline TI orr(LoReg Rd, LoReg Rs) { return RegOp0b{ Rd, Rs, ORR }.v; }
+	static inline TI mul(LoReg Rd, LoReg Rs) { return RegOp0b{ Rd, Rs, MUL }.v; }
+	static inline TI bic(LoReg Rd, LoReg Rs) { return RegOp0b{ Rd, Rs, BIC }.v; }
+	static inline TI mvn(LoReg Rd, LoReg Rs) { return RegOp0b{ Rd, Rs, MVN }.v; }
+	static inline TI add(LoReg Rd, HiReg Hs) { return RegOp0b{ Rd, Hs, ADD_LO_HI }.v; }
+	static inline TI add(HiReg Hd, LoReg Rs) { return RegOp0b{ Hd, Rs, ADD_HI_LO }.v; }
+	static inline TI add(HiReg Hd, HiReg Hs) { return RegOp0b{ Hd, Hs, ADD_HI_HI }.v; }
+	static inline TI cmp(LoReg Rd, HiReg Hs) { return RegOp0b{ Rd, Hs, CMP_LO_HI }.v; }
+	static inline TI cmp(HiReg Hd, LoReg Rs) { return RegOp0b{ Hd, Rs, CMP_HI_LO }.v; }
+	static inline TI cmp(HiReg Hd, HiReg Hs) { return RegOp0b{ Hd, Hs, CMP_HI_HI }.v; }
+	static inline TI mov(LoReg Rd, HiReg Hs) { return RegOp0b{ Rd, Hs, MOV_LO_HI }.v; }
+	static inline TI mov(HiReg Hd, LoReg Rs) { return RegOp0b{ Hd, Rs, MOV_HI_LO }.v; }
+	static inline TI mov(HiReg Hd, HiReg Hs) { return RegOp0b{ Hd, Hs, MOV_HI_HI }.v; }
+	static inline TI bx(LoReg Rs) { return RegOp0b{ 0, Rs, BX_LO }.v; }
+	static inline TI bx(HiReg Hs) { return RegOp0b{ 0, Hs, BX_HI }.v; }
 
 	//RegOp3b
 
-	static constexpr TI add(LoReg Rd, LoReg Rs, LoReg Rn) { return RegOp3b{ Rd, Rs, Rn, ADD_R }.v; }
-	static constexpr TI sub(LoReg Rd, LoReg Rs, LoReg Rn) { return RegOp3b{ Rd, Rs, Rn, SUB_R }.v; }
-	static constexpr TI add(LoReg Rd, LoReg Rs, Value3 i) { return RegOp3b{ Rd, Rs, i, ADD_3B }.v; }
-	static constexpr TI sub(LoReg Rd, LoReg Rs, Value3 i) { return RegOp3b{ Rd, Rs, i, SUB_3B }.v; }
+	static inline TI add(LoReg Rd, LoReg Rs, LoReg Rn) { return RegOp3b{ Rd, Rs, Rn, ADD_R }.v; }
+	static inline TI sub(LoReg Rd, LoReg Rs, LoReg Rn) { return RegOp3b{ Rd, Rs, Rn, SUB_R }.v; }
+	static inline TI add(LoReg Rd, LoReg Rs, Value3 i) { return RegOp3b{ Rd, Rs, i.at(0), ADD_3B }.v; }
+	static inline TI sub(LoReg Rd, LoReg Rs, Value3 i) { return RegOp3b{ Rd, Rs, i.at(0), SUB_3B }.v; }
 
-	static constexpr TI str(LoReg Rd, LoReg Rs, LoReg Rn) { return RegOp3b{ Rd, Rs, Rn, STR }.v; }
-	static constexpr TI strh(LoReg Rd, LoReg Rs, LoReg Rn) { return RegOp3b{ Rd, Rs, Rn, STRH }.v; }
-	static constexpr TI strb(LoReg Rd, LoReg Rs, LoReg Rn) { return RegOp3b{ Rd, Rs, Rn, STRB }.v; }
-	static constexpr TI ldsb(LoReg Rd, LoReg Rs, LoReg Rn) { return RegOp3b{ Rd, Rs, Rn, LDSB }.v; }
-	static constexpr TI ldr(LoReg Rd, LoReg Rs, LoReg Rn) { return RegOp3b{ Rd, Rs, Rn, LDR }.v; }
-	static constexpr TI ldrh(LoReg Rd, LoReg Rs, LoReg Rn) { return RegOp3b{ Rd, Rs, Rn, LDRH }.v; }
-	static constexpr TI ldrb(LoReg Rd, LoReg Rs, LoReg Rn) { return RegOp3b{ Rd, Rs, Rn, LDRB }.v; }
-	static constexpr TI ldsh(LoReg Rd, LoReg Rs, LoReg Rn) { return RegOp3b{ Rd, Rs, Rn, LDSH }.v; }
+	static inline TI str(LoReg Rd, LoReg Rs, LoReg Rn) { return RegOp3b{ Rd, Rs, Rn, STR }.v; }
+	static inline TI strh(LoReg Rd, LoReg Rs, LoReg Rn) { return RegOp3b{ Rd, Rs, Rn, STRH }.v; }
+	static inline TI strb(LoReg Rd, LoReg Rs, LoReg Rn) { return RegOp3b{ Rd, Rs, Rn, STRB }.v; }
+	static inline TI ldsb(LoReg Rd, LoReg Rs, LoReg Rn) { return RegOp3b{ Rd, Rs, Rn, LDSB }.v; }
+	static inline TI ldr(LoReg Rd, LoReg Rs, LoReg Rn) { return RegOp3b{ Rd, Rs, Rn, LDR }.v; }
+	static inline TI ldrh(LoReg Rd, LoReg Rs, LoReg Rn) { return RegOp3b{ Rd, Rs, Rn, LDRH }.v; }
+	static inline TI ldrb(LoReg Rd, LoReg Rs, LoReg Rn) { return RegOp3b{ Rd, Rs, Rn, LDRB }.v; }
+	static inline TI ldsh(LoReg Rd, LoReg Rs, LoReg Rn) { return RegOp3b{ Rd, Rs, Rn, LDSH }.v; }
 
 	//RegOp5b
 
-	static constexpr TI lsl(LoReg Rd, LoReg Rs, Value5 i) { return RegOp5b{ Rd, Rs, i, LSL }.v; }
-	static constexpr TI lsr(LoReg Rd, LoReg Rs, Value5 i) { return RegOp5b{ Rd, Rs, i, LSR }.v; }
-	static constexpr TI asr(LoReg Rd, LoReg Rs, Value5 i) { return RegOp5b{ Rd, Rs, i, ASR }.v; }
+	static inline TI lsl(LoReg Rd, LoReg Rs, Value5 i) { return RegOp5b{ Rd, Rs, TI(i), LSL }.v; }
+	static inline TI lsr(LoReg Rd, LoReg Rs, Value5 i) { return RegOp5b{ Rd, Rs, TI(i), LSR }.v; }
+	static inline TI asr(LoReg Rd, LoReg Rs, Value5 i) { return RegOp5b{ Rd, Rs, TI(i), ASR }.v; }
 
-	static constexpr TI str(LoReg Rd, LoReg Rs, Value7 offset) { return RegOp3b{ Rd, Rs, TI(offset >> 2), STRi }.v; }
-	static constexpr TI ldr(LoReg Rd, LoReg Rs, Value7 offset) { return RegOp3b{ Rd, Rs, TI(offset >> 2), LDRi }.v; }
-	static constexpr TI strb(LoReg Rd, LoReg Rs, Value5 offset) { return RegOp3b{ Rd, Rs, offset, STRBi }.v; }
-	static constexpr TI ldrb(LoReg Rd, LoReg Rs, Value5 offset) { return RegOp3b{ Rd, Rs, offset, LDRBi }.v; }
-	static constexpr TI strh(LoReg Rd, LoReg Rs, Value6 offset) { return RegOp3b{ Rd, Rs, TI(offset >> 1), STRHi }.v; }
-	static constexpr TI ldrh(LoReg Rd, LoReg Rs, Value6 offset) { return RegOp3b{ Rd, Rs, TI(offset >> 1), LDRHi }.v; }
+	static inline TI str(LoReg Rd, LoReg Rs, Value7 offset) { return RegOp3b{ Rd, Rs, TI(offset >> 2), STRi }.v; }
+	static inline TI ldr(LoReg Rd, LoReg Rs, Value7 offset) { return RegOp3b{ Rd, Rs, TI(offset >> 2), LDRi }.v; }
+	static inline TI strb(LoReg Rd, LoReg Rs, Value5 offset) { return RegOp3b{ Rd, Rs, TI(offset), STRBi }.v; }
+	static inline TI ldrb(LoReg Rd, LoReg Rs, Value5 offset) { return RegOp3b{ Rd, Rs, TI(offset), LDRBi }.v; }
+	static inline TI strh(LoReg Rd, LoReg Rs, Value6 offset) { return RegOp3b{ Rd, Rs, TI(offset >> 1), STRHi }.v; }
+	static inline TI ldrh(LoReg Rd, LoReg Rs, Value6 offset) { return RegOp3b{ Rd, Rs, TI(offset >> 1), LDRHi }.v; }
 
 	//Reg0p7b
 
-	//TODO: ADD SP, +/- 128
-	//TODO: PUSH/POP
+	static inline TI addToSp(Value7 offset, bool negative){ return RegOp7b{ TI(offset), negative, ADD_TO_SP }.v; }
+
+	static inline TI push(const oic::Bitset8<7> &Rs) { return RegOp7b{ Rs.at(0), false, PUSH }.v; }
+	static inline TI pop(const oic::Bitset8<7> &Rs) { return RegOp7b{ Rs.at(0), false, POP }.v; }
+	static inline TI pushLr(const oic::Bitset8<7> & Rs) { return RegOp7b { Rs.at(0), true, PUSH }.v; }
+	static inline TI popPc(const oic::Bitset8<7> & Rs) { return RegOp7b { Rs.at(0), true, POP }.v; }
 
 	//RegOp8b
 
-	static constexpr TI mov(LoReg Rd, u8 i) { return RegOp8b{ i, Rd, MOV }.v; }
-	static constexpr TI cmp(LoReg Rd, u8 i) { return RegOp8b{ i, Rd, CMP }.v; }
-	static constexpr TI add(LoReg Rd, u8 i) { return RegOp8b{ i, Rd, ADD }.v; }
-	static constexpr TI sub(LoReg Rd, u8 i) { return RegOp8b{ i, Rd, SUB }.v; }
+	static inline TI mov(LoReg Rd, u8 i) { return RegOp8b{ TI(i), Rd, MOV }.v; }
+	static inline TI cmp(LoReg Rd, u8 i) { return RegOp8b{ TI(i), Rd, CMP }.v; }
+	static inline TI add(LoReg Rd, u8 i) { return RegOp8b{ TI(i), Rd, ADD }.v; }
+	static inline TI sub(LoReg Rd, u8 i) { return RegOp8b{ TI(i), Rd, SUB }.v; }
 
-	static constexpr TI ldrPc(LoReg Rd, Value10 offset) { return RegOp8b{ TI(offset >> 2), Rd, LDR_PC }.v;}
+	static inline TI ldrPc(LoReg Rd, Value10 offset) { return RegOp8b{ TI(offset >> 2), Rd, LDR_PC }.v;}
 
-	static constexpr TI strSp(LoReg Rd, Value10 offset) { return RegOp8b{ TI(offset >> 2), Rd, STR_SP }.v; }
-	static constexpr TI ldrSp(LoReg Rd, Value10 offset) { return RegOp8b{ TI(offset >> 2), Rd, LDR_SP }.v; }
-	static constexpr TI addPc(LoReg Rd, Value10 offset) { return RegOp8b{ TI(offset >> 2), Rd, ADD_PC }.v; }
-	static constexpr TI addSp(LoReg Rd, Value10 offset) { return RegOp8b{ TI(offset >> 2), Rd, ADD_SP }.v; }
+	static inline TI strSp(LoReg Rd, Value10 offset) { return RegOp8b{ TI(offset >> 2), Rd, STR_SP }.v; }
+	static inline TI ldrSp(LoReg Rd, Value10 offset) { return RegOp8b{ TI(offset >> 2), Rd, LDR_SP }.v; }
+	static inline TI addPc(LoReg Rd, Value10 offset) { return RegOp8b{ TI(offset >> 2), Rd, ADD_PC }.v; }
+	static inline TI addSp(LoReg Rd, Value10 offset) { return RegOp8b{ TI(offset >> 2), Rd, ADD_SP }.v; }
+
+	//RegOp11b
+
+	static inline TI b(Value12 offset) { return RegOp11b{ TI(offset >> 1), B }.v;}
+	static inline TI bl(Value23 offset, bool high) { return RegOp11b{ TI(offset >> (1 + 12 * high)), BLH >> 1 }.v;}
+
+	//RegOp12b
+
+	static inline TI b(Condition cond, i8 i) { return RegOp12b{ u8(i), cond, B0 >> 1 }.v; }
+	static inline TI swi(u8 op) { return RegOp12b{ op, 0b1111, B0 >> 1 }.v; }
 
 }

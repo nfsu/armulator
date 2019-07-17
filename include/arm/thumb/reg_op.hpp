@@ -4,13 +4,13 @@
 namespace arm::thumb {
 
 	//A 3-bit lower register
-	enum LoReg : Value3 {
+	enum LoReg : u8 {
 		r0, r1, r2, r3,
 		r4, r5, r6, r7
 	};
 
 	//A 3-bit high register
-	enum HiReg : Value3 {
+	enum HiReg : u8 {
 		r8, r9, r10, r11,
 		r12, r13, r14, r15
 	};

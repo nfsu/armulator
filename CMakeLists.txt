@@ -22,12 +22,14 @@ file(GLOB_RECURSE armulatorSrc
 )
 
 add_executable(
-	amulator
+	armulator
 	${armulatorSrc}
 )
 
+target_link_libraries(armulator ocore)
+
 if(MSVC)
-    target_compile_options(amulator PRIVATE /W4 /WX /MD /MP /wd4201)
+    target_compile_options(armulator PRIVATE /W4 /WX /MD /MP /wd4201)
 else()
-    target_compile_options(amulator PRIVATE -Wall -Wextra -pedantic -Werror)
+    target_compile_options(armulator PRIVATE -Wall -Wextra -pedantic -Werror)
 endif()
