@@ -154,7 +154,7 @@ struct RegOp8b {
 
 struct RegOp11b {
     
-    u16 i : 11;		//Intermediate
+    u16 i : 11;		//Intermediate signed integer
     u16 op : 5;		//Opcode
     
 };

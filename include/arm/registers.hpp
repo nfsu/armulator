@@ -4,7 +4,7 @@
 
 namespace arm {
 
-	enum Register : Value4 {
+	enum Register : u8 {
 
 		r0, r1, r2, r3,
 		r4, r5, r6, r7,
@@ -21,7 +21,7 @@ namespace arm {
 
 	union Registers {
 
-	private:
+	public:
 
 		static constexpr u8 mapping[][Register::count] = {
 			{ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15 },			//SYS and USR
@@ -32,15 +32,7 @@ namespace arm {
 			{ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 29, 30, 15 }			//UND
 		};
 
-	public:
-
-		u32 registers[38] {
-			0,0,0,0,0,0,0,0,
-			0,0,0,0,0,0,0,0,
-			0,0,0,0,0,0,0,0,
-			0,0,0,0,0,0,0,Mode::USR,
-			0,0,0,0,0,0
-		};
+		u32 registers[38]{};
 
 		struct {
 			u32 sysUsr[15];
@@ -53,10 +45,6 @@ namespace arm {
 			PSR cpsr;
 			PSR spsr[6];
 		};
-
-		u32 &operator[](Register r) {
-			return registers[mapping[Mode::toId(cpsr.mode)][r]];
-		}
 
 		PSR &getSpsr() {
 			return spsr[Mode::toId(cpsr.mode)];

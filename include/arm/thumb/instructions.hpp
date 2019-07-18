@@ -32,7 +32,7 @@ namespace arm::thumb {
 		ADD_SP		= 0b1'0101,
 		INCR_SP		= 0b1'0110,
 		PUSH_POP	= 0b1'0111,
-		STRMIA		= 0b1'1000,
+		STMIA		= 0b1'1000,
 		LDMIA		= 0b1'1001,
 		B0			= 0b1'1010,		B1			= 0b1'1011,
 		B			= 0b1'1100,
@@ -66,33 +66,33 @@ namespace arm::thumb {
 	//Extended 10-bit opcodes (RegOp0b)
 	enum OpCode10 : u16 {
 
-		AND			= 0b0'0011'0'0000,
-		EOR			= 0b0'0011'0'0001,
-		LSL_R		= 0b0'0011'0'0010,
-		LSR_R		= 0b0'0011'0'0011,
-		ASR_R		= 0b0'0011'0'0100,
-		ADC			= 0b0'0011'0'0101,
-		SBC			= 0b0'0011'0'0110,
-		ROR			= 0b0'0011'0'0111,
-		TST			= 0b0'0011'0'1000,
-		NEG			= 0b0'0011'0'1001,
-		CMP_R		= 0b0'0011'0'1010,
-		CMN			= 0b0'0011'0'1011,
-		ORR			= 0b0'0011'0'1100,
-		MUL			= 0b0'0011'0'1101,
-		BIC			= 0b0'0011'0'1110,
-		MVN			= 0b0'0011'0'1111,
-		ADD_LO_HI	= 0b0'0011'1'0001,
-		ADD_HI_LO	= 0b0'0011'1'0010,
-		ADD_HI_HI	= 0b0'0011'1'0011,
-		CMP_LO_HI	= 0b0'0011'1'0101,
-		CMP_HI_LO	= 0b0'0011'1'0110,
-		CMP_HI_HI	= 0b0'0011'1'0111,
-		MOV_LO_HI	= 0b0'0011'1'1001,
-		MOV_HI_LO	= 0b0'0011'1'1010,
-		MOV_HI_HI	= 0b0'0011'1'1011,
-		BX_LO		= 0b0'0011'1'1100,
-		BX_HI		= 0b0'0011'1'1101
+		AND			= 0b0'1000'0'0000,
+		EOR			= 0b0'1000'0'0001,
+		LSL_R		= 0b0'1000'0'0010,
+		LSR_R		= 0b0'1000'0'0011,
+		ASR_R		= 0b0'1000'0'0100,
+		ADC			= 0b0'1000'0'0101,
+		SBC			= 0b0'1000'0'0110,
+		ROR			= 0b0'1000'0'0111,
+		TST			= 0b0'1000'0'1000,
+		NEG			= 0b0'1000'0'1001,
+		CMP_R		= 0b0'1000'0'1010,
+		CMN			= 0b0'1000'0'1011,
+		ORR			= 0b0'1000'0'1100,
+		MUL			= 0b0'1000'0'1101,
+		BIC			= 0b0'1000'0'1110,
+		MVN			= 0b0'1000'0'1111,
+		ADD_LO_HI	= 0b0'1000'1'0001,
+		ADD_HI_LO	= 0b0'1000'1'0010,
+		ADD_HI_HI	= 0b0'1000'1'0011,
+		CMP_LO_HI	= 0b0'1000'1'0101,
+		CMP_HI_LO	= 0b0'1000'1'0110,
+		CMP_HI_HI	= 0b0'1000'1'0111,
+		MOV_LO_HI	= 0b0'1000'1'1001,
+		MOV_HI_LO	= 0b0'1000'1'1010,
+		MOV_HI_HI	= 0b0'1000'1'1011,
+		BX_LO		= 0b0'1000'1'1100,
+		BX_HI		= 0b0'1000'1'1101
 
 	};
 
@@ -180,8 +180,8 @@ namespace arm::thumb {
 
 	//RegOp11b
 
-	static inline TI b(Value12 offset) { return RegOp11b{ TI(offset >> 1), B }.v;}
-	static inline TI bl(Value23 offset, bool high) { return RegOp11b{ TI(offset >> (1 + 12 * high)), BLH >> 1 }.v;}
+	/*static inline TI b(Value12 offset) { return RegOp11b{ TI(offset >> 1), B }.v;}
+	static inline TI bl(Value23 offset, bool high) { return RegOp11b{ TI(offset >> (12_usz * high + 1)), BLL - high }.v;}*/
 
 	//RegOp12b
 

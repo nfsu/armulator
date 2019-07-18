@@ -124,25 +124,6 @@ namespace arm::thumb {
 
 	};
 
-	//A branch instruction;
-	//
-	//OPCODE label
-	//
-	//Used for: B, BL
-	//
-	union RegOp11b {
-
-		struct {
-
-			TI i : 11;		//Intermediate
-			TI op : 5;		//Opcode
-
-		};
-
-		TI v;
-
-	};
-
 	//A conditional branch & software interrupt instruction;
 	//
 	//SWI #i
