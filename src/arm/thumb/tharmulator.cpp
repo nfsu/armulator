@@ -4,7 +4,7 @@
 using namespace arm::thumb;
 
 //m is only used for higher registers
-u32 arm::Armulator::stepThumb(const u8 *, bool &setConditionCodes) {
+u32 arm::Armulator::stepThumb(const u8 *m, bool &setConditionCodes) {
 
 	u8 *ptr = rom.data() + (r.registers[pc] & ~1);
 	RegOp5b &i5b = *(RegOp5b*)ptr;
@@ -22,7 +22,29 @@ u32 arm::Armulator::stepThumb(const u8 *, bool &setConditionCodes) {
 		case ASR:		//Arithmetic shift right (maintain sign)
 			return r.registers[i5b.Rd] = arm::asr(r.registers[i5b.Rs], i5b.i);
 
-		//TODO: Implement STRi, LDRi, STRBi, LDRBi, STRHi, LDRHi
+		case STRi:		//Store u32 (with intermediate offset)
+			setConditionCodes = false;
+			return memory.set(i5b.Rs + (i5b.i << 2), r.registers[i5b.Rd]);
+
+		case LDRi:		//Load u32 (with intermediate offset)
+			setConditionCodes = false;
+			return memory.get(i5b.Rs + (i5b.i << 2), r.registers[i5b.Rd]);
+
+		case STRBi:		//Store u8 (with intermediate offset)
+			setConditionCodes = false;
+			return memory.set(i5b.Rs + i5b.i, u8(r.registers[i5b.Rd]));
+
+		case LDRBi:		//Store u8 (with intermediate offset)
+			setConditionCodes = false;
+			return r.registers[i5b.Rd] = memory.get<u8>(i5b.Rs + i5b.i);
+
+		case STRHi:		//Store u16 (with intermediate offset)
+			setConditionCodes = false;
+			return memory.set(i5b.Rs + (i5b.i << 1), u16(r.registers[i5b.Rd]));
+
+		case LDRHi:		//Store u16 (with intermediate offset)
+			setConditionCodes = false;
+			return r.registers[i5b.Rd] = memory.get<u16>(i5b.Rs + (i5b.i << 1));
 
 		//RegOp8b
 
@@ -69,7 +91,7 @@ u32 arm::Armulator::stepThumb(const u8 *, bool &setConditionCodes) {
 					return r.registers[pc] += (((i5b.v << 1) & 0xFFF) | (0x3FFFFC * (i5b.v & 0x400))) + 2;
 
 				//TODO: BLH/BLL
-				//Requires the previous instruction :(
+				//Requires the next instruction :(
 			}
 
 		//RegOp3b
@@ -119,6 +141,15 @@ u32 arm::Armulator::stepThumb(const u8 *, bool &setConditionCodes) {
 					case ASR_R:
 						return r.registers[i0b.Rd] = arm::asr(r.registers[i0b.Rd], r.registers[i0b.Rs]);
 
+					case ADC:
+						return r.registers[i0b.Rd] -= r.registers[i0b.Rs] + !r.cpsr.carry;
+
+					case SBC:
+						return r.registers[i0b.Rd] += r.registers[i0b.Rs] + r.cpsr.carry;
+
+					case ROR:
+						return r.registers[i0b.Rd] = arm::ror(r.registers[i0b.Rd], r.registers[i0b.Rs]);
+
 					case TST:
 						return r.registers[i0b.Rd] & r.registers[i0b.Rs];
 
@@ -143,22 +174,41 @@ u32 arm::Armulator::stepThumb(const u8 *, bool &setConditionCodes) {
 					case MVN:
 						return r.registers[i0b.Rd] = ~r.registers[i0b.Rs];
 
-						/*
-						ADC = 0b0'0011'0'0101,
-						SBC = 0b0'0011'0'0110,
-						ROR = 0b0'0011'0'0111,
-						ADD_LO_HI = 0b0'0011'1'0001,
-						ADD_HI_LO = 0b0'0011'1'0010,
-						ADD_HI_HI = 0b0'0011'1'0011,
-						CMP_LO_HI = 0b0'0011'1'0101,
-						CMP_HI_LO = 0b0'0011'1'0110,
-						CMP_HI_HI = 0b0'0011'1'0111,
-						MOV_LO_HI = 0b0'0011'1'1001,
-						MOV_HI_LO = 0b0'0011'1'1010,
-						MOV_HI_HI = 0b0'0011'1'1011,
-						BX_LO = 0b0'0011'1'1100,
-						BX_HI = 0b0'0011'1'1101
-						*/
+					case ADD_LO_HI:
+						return r.registers[i0b.Rd] += r.registers[m[i0b.Rs | 8]];
+
+					case ADD_HI_LO:
+						return r.registers[m[i0b.Rd | 8]] += r.registers[i0b.Rs];
+
+					case ADD_HI_HI:
+						return r.registers[m[i0b.Rd | 8]] += r.registers[m[i0b.Rs | 8]];
+
+					case CMP_LO_HI:
+						return r.registers[i0b.Rd] - r.registers[m[i0b.Rs | 8]];
+
+					case CMP_HI_LO:
+						return r.registers[m[i0b.Rd | 8]] - r.registers[i0b.Rs];
+
+					case CMP_HI_HI:
+						return r.registers[m[i0b.Rd | 8]] - r.registers[m[i0b.Rs | 8]];
+
+					case MOV_LO_HI:
+						return r.registers[i0b.Rd] = r.registers[m[i0b.Rs | 8]];
+
+					case MOV_HI_LO:
+						return r.registers[m[i0b.Rd | 8]] = r.registers[i0b.Rs];
+
+					case MOV_HI_HI:
+						return r.registers[m[i0b.Rd | 8]] = r.registers[m[i0b.Rs | 8]];
+
+					case BX_LO:
+						setConditionCodes = false;
+						return r.cpsr.thumb = (r.registers[pc] = r.registers[i0b.Rs]) & 1;
+
+					case BX_HI:
+						setConditionCodes = false;
+						return r.cpsr.thumb = (r.registers[pc] = r.registers[m[i0b.Rs | 8]]) & 1;
+
 				}
 
 			}

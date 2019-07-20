@@ -1,11 +1,16 @@
 #include "arm/armulator.hpp"
 using namespace arm;
 
-Armulator::Armulator(DebugLevel level, const Buffer &rom, u32 entry, bool thumb, Mode::E mode): rom(rom), debugLevel(level) {
-	r.cpsr.thumb = thumb;
+Armulator::Armulator(const List<Memory32::Range> &ranges, DebugLevel level, const Buffer &rom, u32 entry, Mode::E mode):
+	rom(rom), debugLevel(level), memory(ranges), stack(&memory) {
+	r.cpsr.thumb = entry & 1;
 	r.cpsr.mode = mode;
 	r.pc = entry;
 }
+
+Memory32 &Armulator::getMemory() { return memory; }
+Stack32<0, 0> &Armulator::getStack(){ return stack;}
+Registers &Armulator::getRegisters() { return r; }
 
 void Armulator::wait() {
 

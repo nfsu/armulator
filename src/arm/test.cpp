@@ -52,15 +52,15 @@ int main() {
 
 		lsl(r2, r0, 2),		//c = 5 << 2 = 20
 		lsr(r3, r1, 3),		//d = 9 >> 3 = 1
-		asr(r4, r1, 1),		//e = 9 >> 1 = 4
+		asr(r4, r1, 1),		//e = 9 ASR 1 = 4
 		mov(r5, 1),			//f = 1
 
 		add(r4, r3, r2),	//e = 20 + 1 = 21
 		sub(r4, r4, r0),	//e = 21 - 5 = 16
 		sub(r4, r4, 2),		//e = 16 - 2 = 14
 		sub(r3, 12),		//d = 1 - 12 = -11
-		asr(r3, r3, 2),		//d = -11 >>> 2 = -3
-		asr(r3, r5),		//f = -3 >>> 1 = -2
+		asr(r3, r3, 2),		//d = -11 ASR 2 = -3
+		asr(r3, r5),		//f = -3 ASR 1 = -2
 
 		mov(r0, 237),		//a = 237
 		cmp(r0, 236),		//; sets flags: 237 and 236; >=, >, !=
@@ -79,6 +79,10 @@ int main() {
 		cmp(r6, r0),		//g == 48?
 		cmn(r6, r0),		//g != 48?
 		tst(r6, r1),		//g & 3?
+		ror(r6, r1),		//Shift 3 bits right and take 3 bits from back at front
+		ror(r6, r1),		//^
+		ror(r6, r1),		//^
+		b(PL, 4),			//if r6 > 0 ? jump 4 bytes
 
 		ldrPc(r4, 8),		//e = 0xDEADBEEF
 		ldrPc(r5, 4),		//f = 0xDEADBEEF
@@ -97,7 +101,7 @@ int main() {
 
 	Buffer rom((u8*) instructions, (u8*)(instructions) + sizeof(instructions));
 
-	arm::Armulator arm = arm::Armulator(arm::Armulator::DebugLevel::MODIFIED, rom, 0, true);
+	arm::Armulator arm = arm::Armulator({}, arm::Armulator::DebugLevel::MODIFIED, rom, 1);
 	arm.wait();
 
 	return 0;
