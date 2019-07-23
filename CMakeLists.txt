@@ -21,8 +21,8 @@ file(GLOB_RECURSE armulatorSrc
 	"src/*.cpp"
 )
 
-add_executable(
-	armulator
+add_library(
+	armulator STATIC
 	${armulatorSrc}
 )
 
