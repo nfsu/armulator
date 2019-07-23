@@ -15,34 +15,34 @@ void print(oic::Bitset<n, T> &v) {
 
 int main() {
 
-	oic::Bitset<24, u8> test0 { 0b1010'1111, 0b0010'0011, 0b1101'1011 };
-	oic::Bitset<24, u8> test1 { 0b0101'0000, 0b0000'0000, 0b0010'0101 };
-	oic::Bitset<4, u8> test2 { true, false, true, false };
+	//oic::Bitset<24, u8> test0 { 0b1010'1111, 0b0010'0011, 0b1101'1011 };
+	//oic::Bitset<24, u8> test1 { 0b0101'0000, 0b0000'0000, 0b0010'0101 };
+	//oic::Bitset<4, u8> test2 { true, false, true, false };
 
-	print(test0);
-	test0 >>= 4;
-	print(test0);
-	test0 <<= 4;
-	print(test0);
-	test0 >>= 8;
-	print(test0);
-	test0 <<= 8;
-	print(test0);
-	test0 >>= 12;
-	print(test0);
-	test0 <<= 12;
-	print(test0);
-	test0 >>= 14;	//invalid
-	print(test0);
-	test0 <<= 14;	//invalid
-	print(test0);
+	//print(test0);
+	//test0 >>= 4;
+	//print(test0);
+	//test0 <<= 4;
+	//print(test0);
+	//test0 >>= 8;
+	//print(test0);
+	//test0 <<= 8;
+	//print(test0);
+	//test0 >>= 12;
+	//print(test0);
+	//test0 <<= 12;
+	//print(test0);
+	//test0 >>= 14;	//invalid
+	//print(test0);
+	//test0 <<= 14;	//invalid
+	//print(test0);
 
-	print(test2);
+	//print(test2);
 
-	print(test1);
-	print(test0);
-	test1 &= test0;
-	print(test1);
+	//print(test1);
+	//print(test0);
+	//test1 &= test0;
+	//print(test1);
 
 
 	static const TI instructions[] = {
@@ -64,6 +64,8 @@ int main() {
 
 		mov(r0, 237),		//a = 237
 		cmp(r0, 236),		//; sets flags: 237 and 236; >=, >, !=
+
+		//b(0),				TODO: Add support for branchless and print op
 
 		and(r0, r5),		//a = 237 & 1 = 1
 		eor(r0, r4),		//a = 1 ^ 14 = 15
@@ -95,9 +97,6 @@ int main() {
 		//TODO: Write this for every instruction (except main memory access)
 
 	};
-
-	for (TI instruction : instructions)
-		printf("%u %p\n", instruction, (void*)instruction);
 
 	Buffer rom((u8*) instructions, (u8*)(instructions) + sizeof(instructions));
 

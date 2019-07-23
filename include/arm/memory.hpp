@@ -6,14 +6,22 @@
 
 namespace arm {
 
+	enum class AccessFlag : bool {
+		READ,
+		READ_WRITE
+	};
+
 	template<typename AddressType>
 	struct MemoryRange {
 
 		void *location{};
-		AddressType start, end, size;
-		String name;
+		String name, altName;
 
-		MemoryRange(AddressType start, AddressType size, String name): start(start), size(size), end(start + size), name(name) {}
+		AddressType start, end, size;
+		AccessFlag access;
+
+		MemoryRange(AddressType start, AddressType size, AccessFlag access, String name, String altName):
+			start(start), size(size), end(start + size), access(access), name(name), altName(altName) {}
 
 		inline bool intersects(const MemoryRange &other) const {
 			return (start <= other.start && end > other.start) || (other.start <= start && other.end > end);
@@ -60,28 +68,38 @@ namespace arm {
 
 		}
 
-		inline void *map(AddressType ptr) const {
+		inline void *map(AddressType ptr, AccessFlag access) const {
 
 			for (const Range &r : ranges)
-				if (r.contains(ptr))
+				if (r.contains(ptr)) {
+
+					if (access > r.access) {
+						oic::System::log()->fatal("Memory access violation");
+						return nullptr;
+					}
+
 					return r.map(ptr);
+				}
 
 			return nullptr;
 		}
 
+		//Copies variable into the address (read)
 		template<typename T>
 		__forceinline T &get(AddressType ptr, T &t) const {
-			return t = *(T*)map(ptr);
+			return t = *(T*)map(ptr, AccessFlag::READ);
 		}
 
+		//Gets the variable from the address (read)
 		template<typename T>
-		__forceinline T &get(AddressType ptr) const {
-			return *(T*)map(ptr);
+		__forceinline const T &get(AddressType ptr) const {
+			return *(T*)map(ptr, AccessFlag::READ);
 		}
 
+		//Sets the variable at the address (write)
 		template<typename T>
 		__forceinline T &set(AddressType ptr, const T &t) {
-			return *(T*)map(ptr) = t;
+			return *(T*)map(ptr, AccessFlag::READ_WRITE) = t;
 		}
 
 		~Memory() = default;

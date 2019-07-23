@@ -38,6 +38,7 @@ void Armulator::print() {
 
 	printf("spsr = ");
 	printPSR(r.spsr[modeId]);
+	printf("\n");
 
 }
 
@@ -80,6 +81,9 @@ void Armulator::printPSR(PSR psr) {
 			printf("spsr = ");
 			printPSR(r.spsr[Mode::toId(r.cpsr.mode)]);
 		}
+
+		printf("\n");
+
 	}
 
 #endif
@@ -103,8 +107,8 @@ bool Armulator::step() {
 		r.cpsr.zero = val == 0;
 		r.cpsr.negative = val & u32(i32_MIN);
 
-		//r.cpsr.carry = ???;
-		//r.cpsr.overflow = ???;
+		//r.cpsr.carry = ???; TODO:
+		//r.cpsr.overflow = ???; TODO:
 
 	}
 
