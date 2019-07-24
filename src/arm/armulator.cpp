@@ -1,8 +1,9 @@
 #include "arm/armulator.hpp"
 using namespace arm;
 
-Armulator::Armulator(const List<Memory32::Range> &ranges, DebugLevel level, const Buffer &rom, u32 entry, Mode::E mode):
-	rom(rom), debugLevel(level), memory(ranges), stack(&memory) {
+Armulator::Armulator(const List<Memory32::Range> &ranges, DebugLevel level, u32 entry, Mode::E mode):
+	debugLevel(level), memory(ranges), stack(&memory) {
+
 	r.cpsr.thumb = entry & 1;
 	r.cpsr.mode = mode;
 	r.pc = entry;
@@ -126,8 +127,7 @@ bool Armulator::step() {
 	u32 incr = 4 - 2 * r.cpsr.thumb;
 	r.pc += incr;
 
-	//Bounds check
-	return r.pc < rom.size() && r.pc - incr < r.pc;
+	return true;
 }
 
 u32 Armulator::stepArm(const u8 *, bool &) {

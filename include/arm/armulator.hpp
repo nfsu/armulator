@@ -29,7 +29,7 @@ namespace arm {
 		//					Add 1 to the address if thumb mode is enabled.
 		//@param[in] mode; in what mode the emulator is launched (default = user)
 
-		Armulator(const List<Memory32::Range> &ranges, DebugLevel debug, const Buffer &rom, u32 entry, Mode::E mode = Mode::USR);
+		Armulator(const List<Memory32::Range> &ranges, DebugLevel debug, u32 entry, Mode::E mode = Mode::USR);
 
 		Armulator(const Armulator&) = delete;
 		Armulator(Armulator&&) = delete;
@@ -65,8 +65,6 @@ namespace arm {
 
 		Memory32 memory;
 		Stack32<0, 0> stack;
-
-		Buffer rom;
 
 		DebugLevel debugLevel;
 

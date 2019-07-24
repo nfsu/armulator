@@ -7,7 +7,7 @@
 namespace arm {
 
 	enum class AccessFlag : bool {
-		READ,
+		READ_ONLY,
 		READ_WRITE
 	};
 
@@ -50,7 +50,7 @@ namespace arm {
 
 			for (usz i = 0, j = ranges.size(); i < j; ++i)
 				for (usz k = 0; k < j; ++k)
-					if (i != k && ranges[j].intersects(ranges[i]))
+					if (i != k && ranges[k].intersects(ranges[i]))
 						oic::System::log()->fatal("Virtual memory ranges intersect");
 
 			usz total{};
@@ -66,6 +66,15 @@ namespace arm {
 				total += range.size;
 			}
 
+		}
+
+		inline u8 *addr(AddressType ptr) const {
+
+			for (const Range &r : ranges)
+				if (r.contains(ptr))
+					return (u8*) r.map(ptr);
+
+			return nullptr;
 		}
 
 		inline void *map(AddressType ptr, AccessFlag access) const {
@@ -87,13 +96,13 @@ namespace arm {
 		//Copies variable into the address (read)
 		template<typename T>
 		__forceinline T &get(AddressType ptr, T &t) const {
-			return t = *(T*)map(ptr, AccessFlag::READ);
+			return t = *(T*)map(ptr, AccessFlag::READ_ONLY);
 		}
 
 		//Gets the variable from the address (read)
 		template<typename T>
 		__forceinline const T &get(AddressType ptr) const {
-			return *(T*)map(ptr, AccessFlag::READ);
+			return *(T*)map(ptr, AccessFlag::READ_ONLY);
 		}
 
 		//Sets the variable at the address (write)

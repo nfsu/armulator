@@ -44,7 +44,7 @@ String num(const T &t) {
 //m is only used for higher registers
 u32 arm::Armulator::stepThumb(const u8 *m, bool &setConditionCodes) {
 
-	u8 *ptr = rom.data() + (r.registers[pc] & ~1);
+	u8 *ptr = memory.addr(r.registers[pc] & ~1);
 	RegOp5b &i5b = *(RegOp5b*)ptr;
 
 	switch (i5b.op) {
