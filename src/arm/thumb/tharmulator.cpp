@@ -18,23 +18,23 @@ String num(const T &t) {
 
 	#define printOp2i(name, Rd, Rs, i)														\
 		if(debugLevel != arm::Armulator::DebugLevel::NONE) 									\
-			printf("%s\n", (String(#name) + " r" + num(Rd) + ", r" + num(Rs) + ", #" + num(i)).c_str());
+			oic::System::log()->println(String(#name) + " r" + num(Rd) + ", r" + num(Rs) + ", #" + num(i));
 
 	#define printOp1i(name, Rd, i)															\
 		if(debugLevel != arm::Armulator::DebugLevel::NONE) 									\
-			printf("%s\n", (String(#name) + " r" + num(Rd) + ", #" + num(i)).c_str());
+			oic::System::log()->println(String(#name) + " r" + num(Rd) + ", #" + num(i));
 
 	#define printOp1(name, Rs)																\
 		if(debugLevel != arm::Armulator::DebugLevel::NONE) 									\
-			printf("%s\n", (String(#name) + " r" + num(Rs)).c_str());
+			oic::System::log()->println(String(#name) + " r" + num(Rs));
 
 	#define printOp2(name, Rd, Rs)															\
 		if(debugLevel != arm::Armulator::DebugLevel::NONE) 									\
-			printf("%s\n", (String(#name) + " r" + num(Rd) + ", r" + num(Rs)).c_str());
+			oic::System::log()->println(String(#name) + " r" + num(Rd) + ", r" + num(Rs));
 
 	#define printOp3(name, Rd, Rs, Rn)														\
 		if(debugLevel != arm::Armulator::DebugLevel::NONE) 									\
-			printf("%s\n", (String(#name) + " r" + num(Rd) + ", r" + num(Rs) + ", r" + num(Rn)).c_str());
+			oic::System::log()->println(String(#name) + " r" + num(Rd) + ", r" + num(Rs) + ", r" + num(Rn));
 #else
 	#define printOpi(name, ...) 
 #endif
@@ -284,12 +284,12 @@ u32 arm::Armulator::stepThumb(const u8 *m, bool &setConditionCodes) {
 					case BX_LO:
 						printOp1(BX, i0b.Rs);
 						setConditionCodes = false;
-						return r.cpsr.thumb = (r.registers[pc] = r.registers[i0b.Rs]) & 1;
+						return r.registers[pc] = r.registers[i0b.Rs];
 
 					case BX_HI:
 						printOp1(BX, i0b.Rs | 8);
 						setConditionCodes = false;
-						return r.cpsr.thumb = (r.registers[pc] = r.registers[m[i0b.Rs | 8]]) & 1;
+						return r.registers[pc] = r.registers[m[i0b.Rs | 8]];
 
 				}
 

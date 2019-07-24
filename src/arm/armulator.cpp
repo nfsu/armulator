@@ -100,6 +100,8 @@ bool Armulator::step() {
 	u8 prevId = Mode::toId(r.cpsr.mode);
 	const u8 *mapping = Registers::mapping[prevId];
 
+	r.cpsr.thumb = r.pc & 1;
+
 	bool modifyCondition = true;
 	u32 val = r.cpsr.thumb ? stepThumb(mapping, modifyCondition) : stepArm(mapping, modifyCondition);
 
