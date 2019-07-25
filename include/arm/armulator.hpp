@@ -9,6 +9,7 @@ namespace arm {
 
 	//#define __ALLOW_DEBUG__
 	#define __USE_TIMER__
+	#define __INLINE__ __forceinline 
 
 	//!ARM7 emulator
 	struct Armulator {

@@ -67,13 +67,18 @@ String num(const T &t) {
 
 //Step through an arm instruction
 //Where m is the mapping of high registers (type mapping + 8) so m[HiReg] matches the register id it should fetch from
+//Normal instructions take 1 cycle
 
-__forceinline u32 stepThumb(arm::Registers &r, arm::Memory32 &memory, const u8 *&m, bool &condition) {
+//TODO: load multiple takes 2 + n cycles
+//TODO: store multiple takes 1 + n cycles
+
+__INLINE__ u32 stepThumb(arm::Registers &r, arm::Memory32 &memory, const u8 *&m, bool &condition) {
 
 	switch (Op5_11 /* fetch first 5 bits of opcode */) {
 
 		//Layout:
 		//Rd3_0, Rs3_3, i5_6, Op5_11
+		//TODO: Shifts take 2 cycles
 
 		case LSL:		//Logical shift left
 			printOp2i(LSL, Rd3_0, Rs3_3, i5_6);
@@ -86,6 +91,8 @@ __forceinline u32 stepThumb(arm::Registers &r, arm::Memory32 &memory, const u8 *
 		case ASR:		//Arithmetic shift right (maintain sign)
 			printOp2i(ASR, Rd3_0, Rs3_3, i5_6);
 			return r.loReg[Rd3_0] = arm::asr(r.loReg[Rs3_3], i5_6);
+
+		//TODO: STR = 2 cycles, LDR = 3 cycles
 
 		case STRi:		//Store u32 (with intermediate offset)
 			printOp2i(STR, Rd3_0, Rs3_3, i5_6_2);
@@ -139,12 +146,15 @@ __forceinline u32 stepThumb(arm::Registers &r, arm::Memory32 &memory, const u8 *
 		//Unconditional branch
 		//Interpret 11-bit 2's complement as u32
 		//Assembler takes into account prefetch
+		//TODO: Should set "branch" condition, so it does a prefetch for next instructions
 
 		case B:
 			condition = false;
 			return r.pc += ((r.nir << 1) & 0xFFE) | (0x3FFFFC * (r.nir & 0x400));
 
-		//case BLH: TODO: Fetch nir and construct 32-bit two's complement and jump to it
+		//TODO: Fetch nir and construct 23-bit two's complement and jump to it
+		//Takes 4 cycles
+		//case BLH:
 
 		//Layout:
 		//Rd3_0, Rs3_3, Rni3_6, Op7_9
@@ -231,6 +241,11 @@ __forceinline u32 stepThumb(arm::Registers &r, arm::Memory32 &memory, const u8 *
 						printOp2(ORR, Rd3_0, Rs3_3);
 						return r.loReg[Rd3_0] |= r.loReg[Rs3_3];
 
+					//TODO: Multiply takes 1 + n cycles
+					//n = 1 if front multiplier 24 bits are 0 or 1
+					//n = 2 if front multiplier 16 bits are 0 or 1
+					//n = 3 if front multiplier 8 bits are 0 or 1
+					//Default: n = 4
 					case MUL:
 						printOp2(MUL, Rd3_0, Rs3_3);
 						return r.loReg[Rd3_0] *= r.loReg[Rs3_3];
@@ -279,23 +294,31 @@ __forceinline u32 stepThumb(arm::Registers &r, arm::Memory32 &memory, const u8 *
 						printOp2(MOV, Rd3_0 | 8, Rs3_3 | 8);
 						return r.registers[m[Rd3_0]] = r.registers[m[Rs3_3]];
 
+					//Branch and Exchange
+					//1 cycle + 2 cycle prefetch = 3 cycles
+					//TODO: Should set "branch" condition, so it does a prefetch for next instructions
+					//TODO: also; shouldn't incr pc after
+					//TODO: Should also update m and selected range
+
 					case BX_LO:
 						printOp1(BX, Rs3_3);
 						condition = false;
 						r.cpsr.thumb(r.loReg[Rs3_3] & 1);
-						return r.pc = r.loReg[Rs3_3] & ~1;				//TODO: Refil pipeline
+						return r.pc = r.loReg[Rs3_3] & ~1;
 
 					case BX_HI:
 						printOp1(BX, Rs3_3 | 8);
 						condition = false;
 						r.cpsr.thumb(r.registers[m[Rs3_3]] & 1);
-						return r.pc = r.registers[m[Rs3_3]] & ~1;		//TODO: Refil pipeline
+						return r.pc = r.registers[m[Rs3_3]] & ~1;
 
 
 			}
 
-	}
+		default:
 
-	oic::System::log()->fatal(String("Unsupported operation at ") + num(r.pc));
-	return u32_MAX;
+			oic::System::log()->fatal(String("Unsupported operation at ") + num(r.pc));
+			return u32_MAX;
+
+	}
 }

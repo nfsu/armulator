@@ -45,39 +45,32 @@ void Armulator::printPSR(PSR psr) {
 
 #include "../src/arm/thumb/tharmulator.cpp"
 
-__forceinline u32 stepArm(Registers &, Memory32 &, const u8 *&, bool &) {
+__INLINE__ u32 stepArm(Registers &, Memory32 &, const u8 *&, bool &) {
 	oic::System::log()->fatal("oopsies");
 	return u32_MAX;
 }
 
 //Fill next instruction pipeline
 
-__forceinline void fetchNext(Registers &r, Memory32 &memory) {
+__INLINE__ void fetchNext(Registers &r, Memory32 &memory) {
 
 	r.ir = r.nir;
 
 	if (r.cpsr.thumb()) {
-		r.nir = memory.get<u16>(r.pc);
+		r.nir = *(u16*) memory.selected->map(r.pc);
 		r.pc += 2;
 	} else {
-		r.nir = memory.get<u32>(r.pc);
+		r.nir = *(u32*) memory.selected->map(r.pc);
 		r.pc += 4;
 	}
 
 }
 
-__forceinline void setConditionFlags(Registers &r, u32 &code) {
-
-	//r.cpsr.carry(...);			//TODO:
-	//r.cpsr.overflow(...);
-	r.cpsr.negative(code & 0x80000000);
-	r.cpsr.zero(code);
-
-}
-
 static constexpr u64 conditionFlag = 0x100000000;
 
-__forceinline void step(Registers &r, Memory32 &memory, const u8 *&hirMap, u32 &returnCode, bool &condition, u64 &timer) {
+__INLINE__ void step(
+	Registers &r, Memory32 &memory, const u8 *&hirMap, u32 &returnCode, bool &condition, u64 &timer,
+	u64 *&instructionTime) {
 
 	//For detecting time per instruction
 
@@ -99,8 +92,10 @@ __forceinline void step(Registers &r, Memory32 &memory, const u8 *&hirMap, u32 &
 
 	//Process condition codes
 
-	if (condition)
-		setConditionFlags(r, returnCode);
+	if (condition) {
+		r.cpsr.negative(returnCode & 0x80000000);
+		r.cpsr.zero(returnCode);
+	}
 
 	//Populate instructions
 
@@ -109,7 +104,8 @@ __forceinline void step(Registers &r, Memory32 &memory, const u8 *&hirMap, u32 &
 	//For printing timing
 
 	#ifdef __USE_TIMER__
-		printf("%llu\n", __rdtsc() - timer);
+		*instructionTime = __rdtsc() - timer;
+		++instructionTime;
 	#endif
 
 	#ifdef __ALLOW_DEBUG__
@@ -126,6 +122,11 @@ void Armulator::wait() {
 	u32 returnCode;
 	bool condition;
 
+	u64 instructionTimes[1024];						//Instructions to be timed
+	u64 *instructionTime = instructionTimes;		//Instruction number
+
+	memory.selected = &memory.mapRange(r.pc);
+
 	//Populate instructions
 
 	fetchNext(r, memory);
@@ -136,10 +137,16 @@ void Armulator::wait() {
 	u8 mid = Mode::toId(r.cpsr.mode());
 	const u8 *hirMap =
 		Registers::mapping[mid] +
-		8 * r.cpsr.thumb(); /* Optimization for thumb; only fetch from reg if hi register is mentioned*/
+		r.cpsr.thumb() * 8; /* Optimization for thumb; only fetch from reg if hi register is mentioned*/
 
 	//Run instructions
+	try {
 
-	while (true)
-		step(r, memory, hirMap, returnCode, condition, timer);
+		while (true)
+			step(r, memory, hirMap, returnCode, condition, timer, instructionTime);
+
+	} catch (std::exception e) {
+		for (u64 *inst = instructionTimes; inst < instructionTime; ++inst)
+			printf("%llu\n", *inst);
+	}
 }

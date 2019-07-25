@@ -74,7 +74,18 @@ namespace arm {
 				if (r.contains(ptr))
 					return (u8*) r.map(ptr);
 
+			oic::System::log()->fatal("Couldn't map range");
 			return nullptr;
+		}
+
+		inline const Range &mapRange(AddressType ptr) const {
+
+			for (const Range &r : ranges)
+				if (r.contains(ptr))
+					return r;
+
+			oic::System::log()->fatal("Couldn't map range");
+			return *ranges.end();
 		}
 
 		template<typename T = u8, AccessFlag access>
@@ -93,6 +104,7 @@ namespace arm {
 					return (T*) r.map(ptr);
 				}
 
+			oic::System::log()->fatal("Couldn't map range");
 			return nullptr;
 		}
 
@@ -136,6 +148,9 @@ namespace arm {
 		const Range &operator[](usz i) const {
 			return ranges[i];
 		}
+
+		//The currently selected range
+		const Range *selected{};
 
 	private:
 
