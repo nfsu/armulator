@@ -77,17 +77,20 @@ namespace arm {
 			return nullptr;
 		}
 
-		inline void *map(AddressType ptr, AccessFlag access) const {
+		template<typename T = u8, AccessFlag access>
+		inline T *map(AddressType ptr) const {
 
 			for (const Range &r : ranges)
 				if (r.contains(ptr)) {
 
-					if (access > r.access) {
-						oic::System::log()->fatal("Memory access violation");
-						return nullptr;
+					if constexpr (access == AccessFlag::READ_WRITE) {
+						if (access > r.access) {
+							oic::System::log()->fatal("Memory access violation");
+							return nullptr;
+						}
 					}
 
-					return r.map(ptr);
+					return (T*) r.map(ptr);
 				}
 
 			return nullptr;
@@ -96,19 +99,19 @@ namespace arm {
 		//Copies variable into the address (read)
 		template<typename T>
 		__forceinline T &get(AddressType ptr, T &t) const {
-			return t = *(T*)map(ptr, AccessFlag::READ_ONLY);
+			return t = *map<T, AccessFlag::READ_ONLY>(ptr);
 		}
 
 		//Gets the variable from the address (read)
 		template<typename T>
 		__forceinline const T &get(AddressType ptr) const {
-			return *(T*)map(ptr, AccessFlag::READ_ONLY);
+			return *map<T, AccessFlag::READ_ONLY>(ptr);
 		}
 
 		//Sets the variable at the address (write)
 		template<typename T>
 		__forceinline T &set(AddressType ptr, const T &t) {
-			return *(T*)map(ptr, AccessFlag::READ_WRITE) = t;
+			return *map<T, AccessFlag::READ_WRITE>(ptr) = t;
 		}
 
 		~Memory() = default;
@@ -128,6 +131,10 @@ namespace arm {
 
 			oic::System::log()->fatal("Can't find range");
 			return *ranges.end();
+		}
+
+		const Range &operator[](usz i) const {
+			return ranges[i];
 		}
 
 	private:

@@ -1,5 +1,6 @@
 #pragma once
 #include "../types.hpp"
+#include "opcodes.hpp"
 
 namespace arm::thumb {
 
@@ -26,17 +27,15 @@ namespace arm::thumb {
 	//			TST, NEG, CMP, CMN, ORR, MUL, BIC, MVN, BX
 	//			High register ADD, MOV, BX
 	//
-	union RegOp0b {
-
-		struct {
-
-			TI Rd : 3;		//Destination register
-			TI Rs : 3;		//Source register
-			TI op : 10;		//Opcode
-
-		};
+	struct RegOp0b {
 
 		TI v;
+
+		RegOp0b(TI Rd, TI Rs, TI op): v(Rd | (Rs << 3) | (op << 6)) {}
+
+		__forceinline u32 Rd() const { return v & 7; }			//Destination register
+		__forceinline u32 Rs() const { return (v >> 3) & 7; }	//Source register
+		__forceinline u32 op() const { return v >> 6; }			//Op code
 
 	};
 
@@ -49,18 +48,16 @@ namespace arm::thumb {
 	//Used for: Low register ADD, SUB, ST/LD instructions
 	//			Low register 3-bit ADD, SUB
 	//
-	union RegOp3b {
-
-		struct {
-
-			TI Rd : 3;		//Destination register
-			TI Rs : 3;		//Source register
-			TI Rni : 3;		//Rn or intermediate
-			TI op : 7;		//Opcode
-
-		};
+	struct RegOp3b {
 
 		TI v;
+
+		RegOp3b(TI Rd, TI Rs, TI Rni, TI op): v(Rd | (Rs << 3) | (Rni << 6) | (op << 9)) {}
+
+		__forceinline u32 Rd() const { return v & 7; }			//Destination register
+		__forceinline u32 Rs() const { return (v >> 3) & 7; }	//Source register
+		__forceinline u32 Rni() const { return (v >> 6) & 7; }	//Source register
+		__forceinline u32 op() const { return v >> 9; }			//Op code
 
 	};
 
@@ -71,18 +68,16 @@ namespace arm::thumb {
 	//
 	//Used for: Low register 8-bit LSL, LSR, ASR, ST/LD instructions
 	//
-	union RegOp5b {
-
-		struct {
-
-			TI Rd : 3;		//Destination register
-			TI Rs : 3;		//Source register
-			TI i : 5;		//Intermediate
-			TI op : 5;		//Opcode
-
-		};
+	struct RegOp5b {
 
 		TI v;
+
+		RegOp5b(TI Rd, TI Rs, TI i, TI op): v(Rd | (Rs << 3) | (i << 6) | (op << 11)) {}
+
+		__forceinline u32 Rd() const { return v & 7; }			//Destination register
+		__forceinline u32 Rs() const { return (v >> 3) & 7; }	//Source register
+		__forceinline u32 i() const { return (v >> 6) & 0x1F; }	//Intermediate
+		__forceinline u32 op() const { return v >> 11; }		//Op code
 
 	};
 
@@ -110,17 +105,15 @@ namespace arm::thumb {
 	//
 	//Used for: Low register 8-bit MOV, CMP, ADD, SUB,  LDR Rd, [PC, #), STRMIA/LDMIA
 	//
-	union RegOp8b {
-
-		struct {
-
-			TI i : 8;		//Intermediate
-			TI Rd : 3;		//Destination register
-			TI op : 5;		//Opcode
-
-		};
+	struct RegOp8b {
 
 		TI v;
+
+		RegOp8b(TI i, TI Rd, TI op): v(i | (Rd << 8) | (op << 11)) {}
+
+		__forceinline u32 i() const { return v & 0xFF; }		//Intermediate
+		__forceinline u32 Rd() const { return (v >> 8) & 7; }	//Destination register
+		__forceinline u32 op() const { return v >> 11; }		//Op code
 
 	};
 

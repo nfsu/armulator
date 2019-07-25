@@ -1,30 +1,23 @@
 #include "arm/armulator.hpp"
 using namespace arm;
 
-Armulator::Armulator(const List<Memory32::Range> &ranges, DebugLevel level, u32 entry, Mode::E mode):
-	debugLevel(level), memory(ranges), stack(&memory) {
+#ifdef _WIN32
+#include <intrin.h>
+#else
+#include <x86intrin.h>
+#endif
 
-	r.cpsr.thumb = entry & 1;
-	r.cpsr.mode = mode;
-	r.pc = entry;
-}
+Armulator::Armulator(const List<Memory32::Range> &ranges, u32 entry, Mode::E mode):
+	memory(ranges), stack(&memory) {
 
-Memory32 &Armulator::getMemory() { return memory; }
-Stack32<0, 0> &Armulator::getStack(){ return stack;}
-Registers &Armulator::getRegisters() { return r; }
-
-void Armulator::wait() {
-
-	#ifdef __ALLOW_DEBUG__
-		printPSR(r.cpsr);
-	#endif
-
-	while (step());
+	r.cpsr.thumb(entry & 1);
+	r.cpsr.mode(mode);
+	r.pc = entry & ~1;
 }
 
 void Armulator::print() {
 
-	u8 modeId = Mode::toId(r.cpsr.mode);
+	u8 modeId = Mode::toId(r.cpsr.mode());
 	auto mapping = Registers::mapping[modeId];
 
 	for (usz i = 0; i < lr; ++i)
@@ -45,94 +38,108 @@ void Armulator::print() {
 
 void Armulator::printPSR(PSR psr) {
 	printf("M: %s, T: %u, F: %u, I: %u, V: %u, C: %u, Z: %u, N: %u\n",
-		   Mode::name(psr.mode), psr.thumb, psr.disableFiq, psr.disableIrq, psr.overflow, psr.carry, psr.zero, psr.negative);
+		   Mode::name(psr.mode()), psr.thumb(), psr.disableFIQ(), psr.disableIRQ(),
+		   psr.overflow(), psr.carry(), psr.zero(), psr.negative()
+	);
 }
 
-#ifdef __ALLOW_DEBUG__
+#include "../src/arm/thumb/tharmulator.cpp"
 
-	void Armulator::printModified() {
-	
-		u8 prevId = Mode::toId(p.cpsr.mode);
-		const u8 *mapping = Registers::mapping[prevId];
-	
-		for (usz i = 0; i < lr; ++i) {
-	
-			u32 v = r.registers[mapping[i]];
-			u32 vp = p.registers[mapping[i]];
-	
-			if (v != vp)
-				printf("r%zu = %u (%i)\n", i, v, i32(v));
-		}
-	
-		if (p.registers[mapping[lr]] != r.registers[mapping[lr]])
-			printf("lr = %u\n", r.registers[mapping[lr]]);
-	
-		if (p.registers[mapping[sp]] != r.registers[mapping[sp]])
-			printf("sp = %u\n", r.registers[mapping[sp]]);
-	
-		if (p.pc != r.pc)
-			printf("pc = %u\n", r.registers[pc /* pc remains shared */]);
-	
-		if (p.cpsr.value != r.cpsr.value) {
-			printf("cpsr = ");
-			printPSR(r.cpsr);
-		}
-	
-		if (p.cpsr.mode != r.cpsr.mode) {
-			printf("spsr = ");
-			printPSR(r.spsr[Mode::toId(r.cpsr.mode)]);
-		}
-
-		printf("\n");
-
-	}
-
-#endif
-
-bool Armulator::step() {
-
-	#ifdef __ALLOW_DEBUG__
-
-		p = r;
-
-	#endif
-
-	u8 prevId = Mode::toId(r.cpsr.mode);
-	const u8 *mapping = Registers::mapping[prevId];
-
-	r.cpsr.thumb = r.pc & 1;
-
-	bool modifyCondition = true;
-	u32 val = r.cpsr.thumb ? stepThumb(mapping, modifyCondition) : stepArm(mapping, modifyCondition);
-
-	if (modifyCondition) {	//Modify the condition in cpsr
-
-		r.cpsr.zero = val == 0;
-		r.cpsr.negative = val & u32(i32_MIN);
-
-		//r.cpsr.carry = ???; TODO:
-		//r.cpsr.overflow = ???; TODO:
-
-	}
-
-	#ifdef __ALLOW_DEBUG__
-
-		if (debugLevel == DebugLevel::ALL)
-			print();
-		else if (debugLevel == DebugLevel::MODIFIED)
-			printModified();
-
-	#endif
-
-	//Step one instruction
-
-	u32 incr = 4 - 2 * r.cpsr.thumb;
-	r.pc += incr;
-
-	return true;
-}
-
-u32 Armulator::stepArm(const u8 *, bool &) {
+__forceinline u32 stepArm(Registers &, Memory32 &, const u8 *&, bool &) {
 	oic::System::log()->fatal("oopsies");
-	return u32(-1);
+	return u32_MAX;
+}
+
+//Fill next instruction pipeline
+
+__forceinline void fetchNext(Registers &r, Memory32 &memory) {
+
+	r.ir = r.nir;
+
+	if (r.cpsr.thumb()) {
+		r.nir = memory.get<u16>(r.pc);
+		r.pc += 2;
+	} else {
+		r.nir = memory.get<u32>(r.pc);
+		r.pc += 4;
+	}
+
+}
+
+__forceinline void setConditionFlags(Registers &r, u32 &code) {
+
+	//r.cpsr.carry(...);			//TODO:
+	//r.cpsr.overflow(...);
+	r.cpsr.negative(code & 0x80000000);
+	r.cpsr.zero(code);
+
+}
+
+static constexpr u64 conditionFlag = 0x100000000;
+
+__forceinline void step(Registers &r, Memory32 &memory, const u8 *&hirMap, u32 &returnCode, bool &condition, u64 &timer) {
+
+	//For detecting time per instruction
+
+	#ifdef __USE_TIMER__
+		timer = __rdtsc();
+	#else
+		timer;
+	#endif
+
+	//Reset condition (always set unless specified)
+	condition = true;
+
+	//Perform code cached in ir/nir registers
+
+	if (r.cpsr.thumb())
+		returnCode = stepThumb(r, memory, hirMap, condition);
+	else 
+		returnCode = stepArm(r, memory, hirMap, condition);
+
+	//Process condition codes
+
+	if (condition)
+		setConditionFlags(r, returnCode);
+
+	//Populate instructions
+
+	fetchNext(r, memory);
+
+	//For printing timing
+
+	#ifdef __USE_TIMER__
+		printf("%llu\n", __rdtsc() - timer);
+	#endif
+
+	#ifdef __ALLOW_DEBUG__
+		//printModified();	TODO:
+	#endif
+
+}
+
+void Armulator::wait() {
+
+	//Stack
+
+	u64 timer;
+	u32 returnCode;
+	bool condition;
+
+	//Populate instructions
+
+	fetchNext(r, memory);
+	fetchNext(r, memory);
+
+	//High register mappings
+
+	u8 mid = Mode::toId(r.cpsr.mode());
+	const u8 *hirMap =
+		Registers::mapping[mid] +
+		8 * r.cpsr.thumb(); /* Optimization for thumb; only fetch from reg if hi register is mentioned*/
+
+	//Run instructions
+
+	while (true)
+		step(r, memory, hirMap, returnCode, condition, timer);
 }

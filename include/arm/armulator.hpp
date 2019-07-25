@@ -7,18 +7,13 @@
 
 namespace arm {
 
-	#define __ALLOW_DEBUG__
+	//#define __ALLOW_DEBUG__
+	#define __USE_TIMER__
 
 	//!ARM7 emulator
 	struct Armulator {
 
 	public:
-
-		enum class DebugLevel : u8 {
-			NONE,
-			MODIFIED,
-			ALL
-		};
 
 		//Create the armulator to run the specified rom
 		//@param[in] ranges; the memory ranges the armulator should map and use
@@ -29,44 +24,24 @@ namespace arm {
 		//					Add 1 to the address if thumb mode is enabled.
 		//@param[in] mode; in what mode the emulator is launched (default = user)
 
-		Armulator(const List<Memory32::Range> &ranges, DebugLevel debug, u32 entry, Mode::E mode = Mode::USR);
+		Armulator(const List<Memory32::Range> &ranges, u32 entry, Mode::E mode = Mode::USR);
 
 		Armulator(const Armulator&) = delete;
 		Armulator(Armulator&&) = delete;
 		Armulator &operator=(const Armulator&) = delete;
 		Armulator &operator=(Armulator&&) = delete;
 
-		bool step();	//Performs a 'step' (one operation)
 		void wait();	//Performs operations until there are none left
 
 		void print();			//Print all registers
 		void printPSR(PSR psr);	//Print the PSR
-
-		Memory32 &getMemory();
-		Stack32<0,0> &getStack();
-		Registers &getRegisters();
-
-	protected:
-
-		u32 stepThumb(const u8 *mapping, bool &setConditionCodes);
-		u32 stepArm(const u8 *mapping, bool &setConditionCodes);
-
-	private:
-
-		#ifdef __ALLOW_DEBUG__
-
-			Registers p;
-
-			void printModified();	//Print modified registers
-
-		#endif
 
 		Registers r;
 
 		Memory32 memory;
 		Stack32<0, 0> stack;
 
-		DebugLevel debugLevel;
+	private:
 
 		bool init = false;
 

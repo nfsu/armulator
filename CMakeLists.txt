@@ -29,7 +29,7 @@ add_library(
 target_link_libraries(armulator ocore)
 
 if(MSVC)
-    target_compile_options(armulator PRIVATE /W4 /WX /MD /MP /wd4201)
+    target_compile_options(armulator PRIVATE /W4 /WX /MD /MP /wd4201 /Ob2)
 else()
     target_compile_options(armulator PRIVATE -Wall -Wextra -pedantic -Werror)
 endif()

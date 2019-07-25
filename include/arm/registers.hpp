@@ -32,22 +32,29 @@ namespace arm {
 			{ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 29, 30, 15 }			//UND
 		};
 
-		u32 registers[38]{};
+		u32 registers[40]{};
 
 		struct {
-			u32 sysUsr[15];
+
+			u32 loReg[8];
+			u32 nonFiq[5];
+			u32 sysUsr[2];
 			u32 pc;
 			u32 fiq[7];
 			u32 irq[2];
 			u32 svc[2];
 			u32 abt[2];
 			u32 und[2];
+
 			PSR cpsr;
 			PSR spsr[6];
+
+			u32 ir;			//Instruction register
+			u32 nir;		//Next instruction register
 		};
 
 		PSR &getSpsr() {
-			return spsr[Mode::toId(cpsr.mode)];
+			return spsr[Mode::toId(cpsr.mode())];
 		}
 	};
 
