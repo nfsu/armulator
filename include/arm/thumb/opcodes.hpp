@@ -61,6 +61,30 @@ namespace arm::thumb {
 
 	};
 
+	//First 8-bits of an opcode (
+	enum OpCode8 : u8 {
+
+		BEQ = 0b1'101'0000,
+		BNE,
+		BCS,
+		BCC,
+		BMI,
+		BPL,
+		BVS,
+		BVC,
+		BHI,
+		BLS,
+		BGE,
+		BLT,
+		BGT,
+		BLE,
+		BAL,
+
+		SWI
+
+
+	};
+
 	//Extended 10-bit opcodes (RegOp0b)
 	enum OpCode10 : u16 {
 

@@ -44,23 +44,6 @@ __INLINE__ u32 stepArm(Registers &, Memory32 &, const u8 *&, bool &, u64&, u64&)
 	return u32_MAX;
 }
 
-//Fill next instruction pipeline
-
-template<bool isThumb>
-__INLINE__ void fetchNext(Registers &r, Memory32 &memory) {
-
-	r.ir = r.nir;
-
-	if constexpr(isThumb) {
-		r.nir = *(u16*) memory.selected->map(r.pc);
-		r.pc += 2;
-	} else {
-		r.nir = *(u32*) memory.selected->map(r.pc);
-		r.pc += 4;
-	}
-
-}
-
 static constexpr u64 conditionFlag = 0x100000000;
 
 template<bool isThumb>
@@ -84,12 +67,12 @@ __INLINE__ void step(
 
 	if (condition) {
 		r.cpsr.negative(returnCode & 0x80000000);
-		r.cpsr.zero(returnCode);
+		r.cpsr.zero(returnCode == 0);
+
+		fetchNext<isThumb>(r, memory);
 	}
-
-	//Populate instructions
-
-	fetchNext<isThumb>(r, memory);
+	else if(returnCode)
+		fetchNext<isThumb>(r, memory);
 
 }
 

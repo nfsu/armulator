@@ -89,12 +89,14 @@ namespace arm::thumb {
 
 	//RegOp11b
 
-	/*static inline TI b(Value12 offset) { return RegOp11b{ TI(offset >> 1), B }.v;}
-	static inline TI bl(Value23 offset, bool high) { return RegOp11b{ TI(offset >> (12_usz * high + 1)), BLL - high }.v;}*/
+	/*static inline TI b(Value12 offset) { return RegOp11b{ TI(offset >> 1), B }.v;}*/
+
+	static inline TI bll(i32 offset /* 23-bit */) { return TI((BLL << 11) | ((u32(offset) & 0x000FFE) >> 1)); }
+	static inline TI blh(i32 offset /* 23-bit */) { return TI((BLH << 11) | ((u32(offset) & 0x7FF000) >> 12)); }
 
 	//RegOp12b
 
-	static inline TI b(Condition cond, i8 i) { return RegOp12b{ u8(i), cond, B0 >> 1 }.v; }
+	static inline TI b(Condition cond, i16 i /* 9-bit */) { return RegOp12b{ u8(i8(i / 2)), cond, B0 >> 1 }.v; }
 	static inline TI swi(u8 op) { return RegOp12b{ op, 0b1111, B0 >> 1 }.v; }
 
 }
