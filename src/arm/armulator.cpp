@@ -39,40 +39,24 @@ void Armulator::printPSR(PSR psr) {
 
 #include "../src/arm/thumb/tharmulator.cpp"
 
-__INLINE__ u32 stepArm(Registers &, Memory32 &, const u8 *&, bool &, u64&, u64&) {
+__INLINE__ void stepArm(Registers &, Memory32 &, const u8 *&, u32&, u64&, u64&) {
 	oic::System::log()->fatal("oopsies");
-	return u32_MAX;
 }
 
 static constexpr u64 conditionFlag = 0x100000000;
 
 template<bool isThumb>
 __INLINE__ void step(
-	Registers &r, Memory32 &memory, const u8 *&hirMap, u32 &returnCode, bool &condition, u64 &timer, u64 &cycles) {
-
-	//Reset condition (always set unless specified)
-	condition = true;
+	Registers &r, Memory32 &memory, const u8 *&hirMap, u32 &returnCode, u64 &timer, u64 &cycles) {
 
 	//Perform code cached in ir/nir registers
 
 	if constexpr(isThumb)
-		returnCode = stepThumb(r, memory, hirMap, condition, timer, cycles);
+		stepThumb(r, memory, hirMap, returnCode, timer, cycles);
 	else 
-		returnCode = stepArm(r, memory, hirMap, condition, timer, cycles);
+		stepArm(r, memory, hirMap, returnCode, timer, cycles);
 
-	//Every instruction is at least 1 cycle
 	++cycles;
-
-	//Process condition codes
-
-	if (condition) {
-		r.cpsr.negative(returnCode & 0x80000000);
-		r.cpsr.zero(returnCode == 0);
-
-		fetchNext<isThumb>(r, memory);
-	}
-	else if(returnCode)
-		fetchNext<isThumb>(r, memory);
 
 }
 
@@ -81,7 +65,6 @@ void Armulator::wait() {
 	//Stack
 
 	u32 returnCode;
-	bool condition;
 
 	memory.selected = &memory.mapRange(r.pc);
 
@@ -110,7 +93,7 @@ void Armulator::wait() {
 
 	while (true)
 		if (r.cpsr.thumb())
-			step<true>(r, memory, hirMap, returnCode, condition, timer, cycles);
+			step<true>(r, memory, hirMap, returnCode, timer, cycles);
 		else
-			step<false>(r, memory, hirMap, returnCode, condition, timer, cycles);
+			step<false>(r, memory, hirMap, returnCode, timer, cycles);
 }

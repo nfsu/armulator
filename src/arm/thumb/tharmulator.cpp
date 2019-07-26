@@ -37,6 +37,7 @@ String num(const T &t) {
 #else
 	#define printOp2i(name, ...) 
 	#define printOp1i(name, ...) 
+	#define printOpi(name, ...) 
 	#define printOp1(name, ...) 
 	#define printOp2(name, ...) 
 	#define printOp3(name, ...) 
@@ -90,7 +91,7 @@ __INLINE__ void fetchNext(arm::Registers &r, arm::Memory32 &memory) {
 //Where m is the mapping of high registers (type mapping + 8) so m[HiReg] matches the register id it should fetch from
 //Normal instructions take 1 cycle
 
-__INLINE__ u32 stepThumb(arm::Registers &r, arm::Memory32 &memory, const u8 *&m, bool &condition, u64 &timer, u64 &cycles) {
+__INLINE__ void stepThumb(arm::Registers &r, arm::Memory32 &memory, const u8 *&m, u32 &reg, u64 &timer, u64 &cycles) {
 
 	switch (Op5_11 /* fetch first 5 bits of opcode */) {
 
@@ -100,78 +101,79 @@ __INLINE__ u32 stepThumb(arm::Registers &r, arm::Memory32 &memory, const u8 *&m,
 		case LSL:		//Logical shift left
 			printOp2i(LSL, Rd3_0, Rs3_3, i5_6);
 			++cycles;
-			return r.loReg[Rd3_0] = r.loReg[Rs3_3] << i5_6;
+			reg = r.loReg[Rd3_0] = r.loReg[Rs3_3] << i5_6;
+			goto condition;
 
 		case LSR:		//Logical shift right
 			printOp2i(LSR, Rd3_0, Rs3_3, i5_6);
 			++cycles;
-			return r.loReg[Rd3_0] = r.loReg[Rs3_3] >> i5_6;
+			reg = r.loReg[Rd3_0] = r.loReg[Rs3_3] >> i5_6;
+			goto condition;
 
 		case ASR:		//Arithmetic shift right (maintain sign)
 			printOp2i(ASR, Rd3_0, Rs3_3, i5_6);
 			++cycles;
-			return r.loReg[Rd3_0] = arm::asr(r.loReg[Rs3_3], i5_6);
+			reg = r.loReg[Rd3_0] = arm::asr(r.loReg[Rs3_3], i5_6);
+			goto condition;
 
 		case STRi:		//Store u32 (with intermediate offset)
 			printOp2i(STR, Rd3_0, Rs3_3, i5_6_2);
-			condition = false;
 			++cycles;
 			memory.set(r.loReg[Rs3_3] + i5_6_2, u32(r.loReg[Rd3_0]));
-			return 1;
+			goto fetch;
 
 		case LDRi:		//Load u32 (with intermediate offset)
 			printOp2i(LDR, Rd3_0, Rs3_3, i5_6_2);
-			condition = false;
 			cycles += 2;
 			r.loReg[Rd3_0] = memory.get<u32>(r.loReg[Rs3_3] + i5_6_2);
-			return 1;
+			goto fetch;
 
 		case STRBi:		//Store u8 (with intermediate offset)
 			printOp2i(STRB, Rd3_0, Rs3_3, i5_6);
-			condition = false;
 			++cycles;
 			memory.set(r.loReg[Rs3_3] + i5_6, u8(r.loReg[Rd3_0]));
-			return 1;
+			goto fetch;
 
 		case LDRBi:		//Store u8 (with intermediate offset)
 			printOp2i(LDRB, Rd3_0, Rs3_3, i5_6);
-			condition = false;
 			cycles += 2;
 			r.loReg[Rd3_0] = memory.get<u8>(r.loReg[Rs3_3] + i5_6);
-			return 1;
+			goto fetch;
 
 		case STRHi:		//Store u16 (with intermediate offset)
 			printOp2i(STRH, Rd3_0, Rs3_3, i5_6_1);
-			condition = false;
 			++cycles;
 			memory.set(r.loReg[Rs3_3] + i5_6_1, u16(r.loReg[Rd3_0]));
-			return 1;
+			goto fetch;
 
 		case LDRHi:		//Store u16 (with intermediate offset)
 			printOp2i(LDRH, Rd3_0, Rs3_3, i5_6_1);
-			condition = false;
 			cycles += 2;
 			r.loReg[Rd3_0] = memory.get<u16>(r.loReg[Rs3_3] + i5_6_1);
-			return 1;
+			goto fetch;
 
 		//Layout:
 		//i8_0, Rd3_8, Op5_11
 
 		case MOV:
 			printOp1i(MOV, Rd3_8, i8_0);
-			return r.loReg[Rd3_8] = i8_0;
+			reg = r.loReg[Rd3_8] = i8_0;
+			goto condition;
 
 		case CMP:
 			printOp1i(CMP, Rd3_8, i8_0);
-			return r.loReg[Rd3_8] - i8_0;
+			reg = r.loReg[Rd3_8] - i8_0;
+			goto condition;
 
 		case ADD:
 			printOp1i(ADD, Rd3_8, i8_0);
-			return r.loReg[Rd3_8] += i8_0;
+			reg = r.loReg[Rd3_8] += i8_0;
+			goto condition;
 
 		case SUB:
 			printOp1i(SUB, Rd3_8, i8_0);
-			return r.loReg[Rd3_8] -= i8_0;
+			reg = r.loReg[Rd3_8] -= i8_0;
+			goto condition;
 
 		//Unconditional branch
 		//Interpret 11-bit 2's complement as u32
@@ -197,7 +199,7 @@ __INLINE__ u32 stepThumb(arm::Registers &r, arm::Memory32 &memory, const u8 *&m,
 					printOpi(BEQ, i32(i8(i8_0)) * 2);
 
 					if (!r.cpsr.zero())
-						return 0;
+						goto fetch;
 
 					break;
 
@@ -206,7 +208,7 @@ __INLINE__ u32 stepThumb(arm::Registers &r, arm::Memory32 &memory, const u8 *&m,
 					printOpi(BNE, i32(i8(i8_0)) * 2);
 
 					if (r.cpsr.zero())
-						return 0;
+						goto fetch;
 
 					break;
 
@@ -215,7 +217,7 @@ __INLINE__ u32 stepThumb(arm::Registers &r, arm::Memory32 &memory, const u8 *&m,
 					printOpi(BCS, i32(i8(i8_0)) * 2);
 
 					if (!r.cpsr.carry())
-						return 0;
+						goto fetch;
 
 					break;
 
@@ -224,7 +226,7 @@ __INLINE__ u32 stepThumb(arm::Registers &r, arm::Memory32 &memory, const u8 *&m,
 					printOpi(BCC, i32(i8(i8_0)) * 2);
 
 					if (r.cpsr.carry())
-						return 0;
+						goto fetch;
 
 					break;
 
@@ -233,7 +235,7 @@ __INLINE__ u32 stepThumb(arm::Registers &r, arm::Memory32 &memory, const u8 *&m,
 					printOpi(BMI, i32(i8(i8_0)) * 2);
 
 					if (!r.cpsr.negative())
-						return 0;
+						goto fetch;
 
 					break;
 
@@ -242,7 +244,7 @@ __INLINE__ u32 stepThumb(arm::Registers &r, arm::Memory32 &memory, const u8 *&m,
 					printOpi(BPL, i32(i8(i8_0)) * 2);
 
 					if (r.cpsr.negative())
-						return 0;
+						goto fetch;
 
 					break;
 
@@ -251,7 +253,7 @@ __INLINE__ u32 stepThumb(arm::Registers &r, arm::Memory32 &memory, const u8 *&m,
 					printOpi(BVS, i32(i8(i8_0)) * 2);
 
 					if (!r.cpsr.overflow())
-						return 0;
+						goto fetch;
 
 					break;
 
@@ -260,7 +262,7 @@ __INLINE__ u32 stepThumb(arm::Registers &r, arm::Memory32 &memory, const u8 *&m,
 					printOpi(BVC, i32(i8(i8_0)) * 2);
 
 					if (r.cpsr.overflow())
-						return 0;
+						goto fetch;
 
 					break;
 
@@ -269,7 +271,7 @@ __INLINE__ u32 stepThumb(arm::Registers &r, arm::Memory32 &memory, const u8 *&m,
 					printOpi(BHI, i32(i8(i8_0)) * 2);
 
 					if (!r.cpsr.carry() || r.cpsr.zero())
-						return 0;
+						goto fetch;
 
 					break;
 
@@ -278,7 +280,7 @@ __INLINE__ u32 stepThumb(arm::Registers &r, arm::Memory32 &memory, const u8 *&m,
 					printOpi(BLS, i32(i8(i8_0)) * 2);
 
 					if (r.cpsr.carry() && !r.cpsr.zero())
-						return 0;
+						goto fetch;
 
 					break;
 
@@ -287,7 +289,7 @@ __INLINE__ u32 stepThumb(arm::Registers &r, arm::Memory32 &memory, const u8 *&m,
 					printOpi(BGE, i32(i8(i8_0)) * 2);
 
 					if (r.cpsr.negative() != r.cpsr.overflow())
-						return 0;
+						goto fetch;
 
 					break;
 
@@ -296,7 +298,7 @@ __INLINE__ u32 stepThumb(arm::Registers &r, arm::Memory32 &memory, const u8 *&m,
 					printOpi(BLT, i32(i8(i8_0)) * 2);
 
 					if (r.cpsr.negative() == r.cpsr.overflow())
-						return 0;
+						goto fetch;
 
 					break;
 
@@ -305,7 +307,7 @@ __INLINE__ u32 stepThumb(arm::Registers &r, arm::Memory32 &memory, const u8 *&m,
 					printOpi(BGT, i32(i8(i8_0)) * 2);
 
 					if (r.cpsr.zero() || r.cpsr.negative() != r.cpsr.overflow())
-						return 0;
+						goto fetch;
 
 					break;
 
@@ -314,7 +316,7 @@ __INLINE__ u32 stepThumb(arm::Registers &r, arm::Memory32 &memory, const u8 *&m,
 					printOpi(BLE, i32(i8(i8_0)) * 2);
 
 					if (!r.cpsr.zero() && r.cpsr.negative() == r.cpsr.overflow())
-						return 0;
+						goto fetch;
 
 					break;
 
@@ -326,7 +328,7 @@ __INLINE__ u32 stepThumb(arm::Registers &r, arm::Memory32 &memory, const u8 *&m,
 				case SWI:
 
 					printOpi(SWI, u32(i8_0));
-					return 0;						//TODO: Implement SWI behavior
+					goto fetch;						//TODO: Implement SWI behavior
 
 			}
 
@@ -356,19 +358,23 @@ __INLINE__ u32 stepThumb(arm::Registers &r, arm::Memory32 &memory, const u8 *&m,
 
 				case ADD_R:
 					printOp3(ADD, Rd3_0, Rs3_3, Rni3_6);
-					return r.loReg[Rd3_0] = r.loReg[Rs3_3] + r.loReg[Rni3_6];
+					reg = r.loReg[Rd3_0] = r.loReg[Rs3_3] + r.loReg[Rni3_6];
+					goto condition;
 
 				case SUB_R:
 					printOp3(ADD, Rd3_0, Rs3_3, Rni3_6);
-					return r.loReg[Rd3_0] = r.loReg[Rs3_3] - r.loReg[Rni3_6];
+					reg = r.loReg[Rd3_0] = r.loReg[Rs3_3] - r.loReg[Rni3_6];
+					goto condition;
 
 				case ADD_3B:
 					printOp2i(ADD, Rd3_0, Rs3_3, Rni3_6);
-					return r.loReg[Rd3_0] = r.loReg[Rs3_3] + Rni3_6;
+					reg = r.loReg[Rd3_0] = r.loReg[Rs3_3] + Rni3_6;
+					goto condition;
 
 				case SUB_3B:
 					printOp2i(ADD, Rd3_0, Rs3_3, Rni3_6);
-					return r.loReg[Rd3_0] = r.loReg[Rs3_3] - Rni3_6;
+					reg = r.loReg[Rd3_0] = r.loReg[Rs3_3] - Rni3_6;
+					goto condition;
 
 				//TODO: STR, STRH, STRB, LDSB, LDR, LDRH, LDRB, LDSH
 			}
@@ -382,55 +388,68 @@ __INLINE__ u32 stepThumb(arm::Registers &r, arm::Memory32 &memory, const u8 *&m,
 
 					case AND:
 						printOp2(AND, Rd3_0, Rs3_3);
-						return r.loReg[Rd3_0] &= r.loReg[Rs3_3];
+						reg = r.loReg[Rd3_0] &= r.loReg[Rs3_3];
+						goto condition;
 
 					case EOR:
 						printOp2(EOR, Rd3_0, Rs3_3);
-						return r.loReg[Rd3_0] ^= r.loReg[Rs3_3];
+						reg = r.loReg[Rd3_0] ^= r.loReg[Rs3_3];
+						goto condition;
 
 					case LSL_R:
 						printOp2(LSL, Rd3_0, Rs3_3);
-						return r.loReg[Rd3_0] <<= r.loReg[Rs3_3];
+						reg = r.loReg[Rd3_0] <<= r.loReg[Rs3_3];
+						goto condition;
 
 					case LSR_R:
 						printOp2(LSR, Rd3_0, Rs3_3);
-						return r.loReg[Rd3_0] >>= r.loReg[Rs3_3];
+						reg = r.loReg[Rd3_0] >>= r.loReg[Rs3_3];
+						goto condition;
 
 					case ASR_R:
 						printOp2(ASR, Rd3_0, Rs3_3);
-						return r.loReg[Rd3_0] = arm::asr(r.loReg[Rd3_0], r.loReg[Rs3_3]);
+						reg = r.loReg[Rd3_0] = arm::asr(r.loReg[Rd3_0], r.loReg[Rs3_3]);
+						goto condition;
 
 					case ADC:
 						printOp2(ADC, Rd3_0, Rs3_3);
-						return r.loReg[Rd3_0] -= r.loReg[Rs3_3] + !r.cpsr.carry();
+						reg = r.loReg[Rd3_0] -= r.loReg[Rs3_3] + !r.cpsr.carry();
+						goto condition;
 
 					case SBC:
 						printOp2(SBC, Rd3_0, Rs3_3);
-						return r.loReg[Rd3_0] += r.loReg[Rs3_3] + r.cpsr.carry();
+						reg = r.loReg[Rd3_0] += r.loReg[Rs3_3] + r.cpsr.carry();
+						goto condition;
 
 					case ROR:
 						printOp2(ROR, Rd3_0, Rs3_3);
-						return r.loReg[Rd3_0] = arm::ror(r.loReg[Rd3_0], r.loReg[Rs3_3]);
+						reg = r.loReg[Rd3_0] = arm::ror(r.loReg[Rd3_0], r.loReg[Rs3_3]);
+						goto condition;
 
 					case TST:
 						printOp2(TST, Rd3_0, Rs3_3);
-						return r.loReg[Rd3_0] & r.loReg[Rs3_3];
+						reg = r.loReg[Rd3_0] & r.loReg[Rs3_3];
+						goto condition;
 
 					case NEG:
 						printOp2(NEG, Rd3_0, Rs3_3);
-						return r.loReg[Rd3_0] = u32(-i32(r.loReg[Rs3_3]));
+						reg = r.loReg[Rd3_0] = u32(-i32(r.loReg[Rs3_3]));
+						goto condition;
 
 					case CMP_R:
 						printOp2(CMP, Rd3_0, Rs3_3);
-						return r.loReg[Rd3_0] - r.loReg[Rs3_3];
+						reg = r.loReg[Rd3_0] - r.loReg[Rs3_3];
+						goto condition;
 
 					case CMN:
 						printOp2(CMN, Rd3_0, Rs3_3);
-						return r.loReg[Rd3_0] + r.loReg[Rs3_3];
+						reg = r.loReg[Rd3_0] + r.loReg[Rs3_3];
+						goto condition;
 
 					case ORR:
 						printOp2(ORR, Rd3_0, Rs3_3);
-						return r.loReg[Rd3_0] |= r.loReg[Rs3_3];
+						reg = r.loReg[Rd3_0] |= r.loReg[Rs3_3];
+						goto condition;
 
 					//TODO: Multiply takes 1 + n cycles
 					//n = 1 if front multiplier 24 bits are 0 or 1
@@ -439,51 +458,63 @@ __INLINE__ u32 stepThumb(arm::Registers &r, arm::Memory32 &memory, const u8 *&m,
 					//Default: n = 4
 					case MUL:
 						printOp2(MUL, Rd3_0, Rs3_3);
-						return r.loReg[Rd3_0] *= r.loReg[Rs3_3];
+						reg = r.loReg[Rd3_0] *= r.loReg[Rs3_3];
+						goto condition;
 
 					case BIC:
 						printOp2(BIC, Rd3_0, Rs3_3);
-						return r.loReg[Rd3_0] &= ~r.loReg[Rs3_3];
+						reg = r.loReg[Rd3_0] &= ~r.loReg[Rs3_3];
+						goto condition;
 
 					case MVN:
 						printOp2(MVN, Rd3_0, Rs3_3);
-						return r.loReg[Rd3_0] = ~r.loReg[Rs3_3];
+						reg = r.loReg[Rd3_0] = ~r.loReg[Rs3_3];
+						goto condition;
 
 					case ADD_LO_HI:
 						printOp2(ADD, Rd3_0, Rs3_3 | 8);
-						return r.loReg[Rd3_0] += r.registers[m[Rs3_3]];
+						reg = r.loReg[Rd3_0] += r.registers[m[Rs3_3]];
+						goto condition;
 
 					case ADD_HI_LO:
 						printOp2(ADD, Rd3_0 | 8, Rs3_3);
-						return r.registers[m[Rd3_0]] += r.loReg[Rs3_3];
+						reg = r.registers[m[Rd3_0]] += r.loReg[Rs3_3];
+						goto condition;
 
 					case ADD_HI_HI:
 						printOp2(ADD, Rd3_0 | 8, Rs3_3 | 8);
-						return r.registers[m[Rd3_0]] += r.registers[m[Rs3_3]];
+						reg = r.registers[m[Rd3_0]] += r.registers[m[Rs3_3]];
+						goto condition;
 
 					case CMP_LO_HI:
 						printOp2(CMP, Rd3_0, Rs3_3 | 8);
-						return r.loReg[Rd3_0] - r.registers[m[Rs3_3]];
+						reg = r.loReg[Rd3_0] - r.registers[m[Rs3_3]];
+						goto condition;
 
 					case CMP_HI_LO:
 						printOp2(CMP, Rd3_0 | 8, Rs3_3);
-						return r.registers[m[Rd3_0]] - r.loReg[Rs3_3];
+						reg = r.registers[m[Rd3_0]] - r.loReg[Rs3_3];
+						goto condition;
 
 					case CMP_HI_HI:
 						printOp2(CMP, Rd3_0 | 8, Rs3_3 | 8);
-						return r.registers[m[Rd3_0]] - r.registers[m[Rs3_3]];
+						reg = r.registers[m[Rd3_0]] - r.registers[m[Rs3_3]];
+						goto condition;
 
 					case MOV_LO_HI:
 						printOp2(MOV, Rd3_0, Rs3_3 | 8);
-						return r.loReg[Rd3_0] = r.registers[m[Rs3_3]];
+						reg = r.loReg[Rd3_0] = r.registers[m[Rs3_3]];
+						goto condition;
 
 					case MOV_HI_LO:
 						printOp2(MOV, Rd3_0 | 8, Rs3_3);
-						return r.registers[m[Rd3_0]] = r.loReg[Rs3_3];
+						reg = r.registers[m[Rd3_0]] = r.loReg[Rs3_3];
+						goto condition;
 
 					case MOV_HI_HI:
 						printOp2(MOV, Rd3_0 | 8, Rs3_3 | 8);
-						return r.registers[m[Rd3_0]] = r.registers[m[Rs3_3]];
+						reg = r.registers[m[Rd3_0]] = r.registers[m[Rs3_3]];
+						goto condition;
 
 					//Branch and Exchange
 					//1 cycle + 2 cycle prefetch = 3 cycles
@@ -494,10 +525,8 @@ __INLINE__ u32 stepThumb(arm::Registers &r, arm::Memory32 &memory, const u8 *&m,
 						r.cpsr.thumb(r.loReg[Rs3_3] & 1);
 						r.pc = r.loReg[Rs3_3] & ~1;
 
-						if (r.loReg[Rs3_3] & 1) {
-							r.cpsr.value |= arm::PSR::tMask;
+						if (r.loReg[Rs3_3] & 1)
 							goto branchThumb;
-						}
 
 						r.cpsr.value &= ~arm::PSR::tMask;
 						goto branchArm;
@@ -510,6 +539,8 @@ __INLINE__ u32 stepThumb(arm::Registers &r, arm::Memory32 &memory, const u8 *&m,
 
 
 			}
+
+		//TODO: Stack operations
 
 		//TODO: load multiple takes 2 + n cycles
 		//TODO: store multiple takes 1 + n cycles
@@ -525,7 +556,7 @@ __INLINE__ u32 stepThumb(arm::Registers &r, arm::Memory32 &memory, const u8 *&m,
 			);
 
 			throw std::exception();
-			return u32_MAX;
+			return;
 
 	}
 
@@ -551,12 +582,18 @@ branchThumb:
 
 branch:
 
-	//Don't set condition codes
-	condition = false;
-
 	//Requires at least 3 cycles (2 for fetch, 1 for pipeline)
-	cycles += 2;
 
-	return 0;
+	cycles += 2;
+	return;
+
+condition:
+
+	r.cpsr.negative(reg & 0x80000000);
+	r.cpsr.zero(reg == 0);
+
+fetch:
+
+	fetchNext<true>(r, memory);
 
 }
