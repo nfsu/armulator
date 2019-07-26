@@ -72,56 +72,62 @@ String num(const T &t) {
 //TODO: load multiple takes 2 + n cycles
 //TODO: store multiple takes 1 + n cycles
 
-__INLINE__ u32 stepThumb(arm::Registers &r, arm::Memory32 &memory, const u8 *&m, bool &condition) {
+__INLINE__ u32 stepThumb(arm::Registers &r, arm::Memory32 &memory, const u8 *&m, bool &condition, u64 &timer, u64 &cycles) {
 
 	switch (Op5_11 /* fetch first 5 bits of opcode */) {
 
 		//Layout:
 		//Rd3_0, Rs3_3, i5_6, Op5_11
-		//TODO: Shifts take 2 cycles
 
 		case LSL:		//Logical shift left
 			printOp2i(LSL, Rd3_0, Rs3_3, i5_6);
+			++cycles;
 			return r.loReg[Rd3_0] = r.loReg[Rs3_3] << i5_6;
 
 		case LSR:		//Logical shift right
 			printOp2i(LSR, Rd3_0, Rs3_3, i5_6);
+			++cycles;
 			return r.loReg[Rd3_0] = r.loReg[Rs3_3] >> i5_6;
 
 		case ASR:		//Arithmetic shift right (maintain sign)
 			printOp2i(ASR, Rd3_0, Rs3_3, i5_6);
+			++cycles;
 			return r.loReg[Rd3_0] = arm::asr(r.loReg[Rs3_3], i5_6);
-
-		//TODO: STR = 2 cycles, LDR = 3 cycles
 
 		case STRi:		//Store u32 (with intermediate offset)
 			printOp2i(STR, Rd3_0, Rs3_3, i5_6_2);
 			condition = false;
+			++cycles;
 			return memory.set(r.loReg[Rs3_3] + i5_6_2, u32(r.loReg[Rd3_0]));
 
 		case LDRi:		//Load u32 (with intermediate offset)
 			printOp2i(LDR, Rd3_0, Rs3_3, i5_6_2);
 			condition = false;
+			cycles += 2;
 			return r.loReg[Rd3_0] = memory.get<u32>(r.loReg[Rs3_3] + i5_6_2);
 
 		case STRBi:		//Store u8 (with intermediate offset)
 			printOp2i(STRB, Rd3_0, Rs3_3, i5_6);
 			condition = false;
+			++cycles;
 			return memory.set(r.loReg[Rs3_3] + i5_6, u8(r.loReg[Rd3_0]));
 
 		case LDRBi:		//Store u8 (with intermediate offset)
 			printOp2i(LDRB, Rd3_0, Rs3_3, i5_6);
 			condition = false;
+			cycles += 2;
 			return r.loReg[Rd3_0] = memory.get<u8>(r.loReg[Rs3_3] + i5_6);
 
 		case STRHi:		//Store u16 (with intermediate offset)
 			printOp2i(STRH, Rd3_0, Rs3_3, i5_6_1);
 			condition = false;
+			++cycles;
 			return memory.set(r.loReg[Rs3_3] + i5_6_1, u16(r.loReg[Rd3_0]));
 
 		case LDRHi:		//Store u16 (with intermediate offset)
 			printOp2i(LDRH, Rd3_0, Rs3_3, i5_6_1);
 			condition = false;
+			cycles += 2;
 			return r.loReg[Rd3_0] = memory.get<u16>(r.loReg[Rs3_3] + i5_6_1);
 
 		//Layout:
@@ -146,9 +152,11 @@ __INLINE__ u32 stepThumb(arm::Registers &r, arm::Memory32 &memory, const u8 *&m,
 		//Unconditional branch
 		//Interpret 11-bit 2's complement as u32
 		//Assembler takes into account prefetch
+		//Takes 3 cycles
 		//TODO: Should set "branch" condition, so it does a prefetch for next instructions
 
 		case B:
+			cycles += 2;
 			condition = false;
 			return r.pc += ((r.nir << 1) & 0xFFE) | (0x3FFFFC * (r.nir & 0x400));
 
@@ -303,12 +311,14 @@ __INLINE__ u32 stepThumb(arm::Registers &r, arm::Memory32 &memory, const u8 *&m,
 					case BX_LO:
 						printOp1(BX, Rs3_3);
 						condition = false;
+						cycles += 2;
 						r.cpsr.thumb(r.loReg[Rs3_3] & 1);
 						return r.pc = r.loReg[Rs3_3] & ~1;
 
 					case BX_HI:
 						printOp1(BX, Rs3_3 | 8);
 						condition = false;
+						cycles += 2;
 						r.cpsr.thumb(r.registers[m[Rs3_3]] & 1);
 						return r.pc = r.registers[m[Rs3_3]] & ~1;
 
@@ -317,7 +327,14 @@ __INLINE__ u32 stepThumb(arm::Registers &r, arm::Memory32 &memory, const u8 *&m,
 
 		default:
 
-			oic::System::log()->fatal(String("Unsupported operation at ") + num(r.pc));
+			timer = std::chrono::high_resolution_clock::now().time_since_epoch().count() - timer;
+
+			oic::System::log()->fatal(
+				String(	"Unsupported operation at ") + num(r.pc) +
+				" with time " + num(timer) + "ns (" +
+				num(f64(timer) / cycles) + "ns avg, " + num(cycles) + " cycles)"
+			);
+
 			return u32_MAX;
 
 	}

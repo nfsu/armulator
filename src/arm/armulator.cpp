@@ -1,12 +1,6 @@
 #include "arm/armulator.hpp"
 using namespace arm;
 
-#ifdef _WIN32
-#include <intrin.h>
-#else
-#include <x86intrin.h>
-#endif
-
 Armulator::Armulator(const List<Memory32::Range> &ranges, u32 entry, Mode::E mode):
 	memory(ranges), stack(&memory) {
 
@@ -45,18 +39,19 @@ void Armulator::printPSR(PSR psr) {
 
 #include "../src/arm/thumb/tharmulator.cpp"
 
-__INLINE__ u32 stepArm(Registers &, Memory32 &, const u8 *&, bool &) {
+__INLINE__ u32 stepArm(Registers &, Memory32 &, const u8 *&, bool &, u64&, u64&) {
 	oic::System::log()->fatal("oopsies");
 	return u32_MAX;
 }
 
 //Fill next instruction pipeline
 
+template<bool isThumb>
 __INLINE__ void fetchNext(Registers &r, Memory32 &memory) {
 
 	r.ir = r.nir;
 
-	if (r.cpsr.thumb()) {
+	if constexpr(isThumb) {
 		r.nir = *(u16*) memory.selected->map(r.pc);
 		r.pc += 2;
 	} else {
@@ -68,27 +63,22 @@ __INLINE__ void fetchNext(Registers &r, Memory32 &memory) {
 
 static constexpr u64 conditionFlag = 0x100000000;
 
+template<bool isThumb>
 __INLINE__ void step(
-	Registers &r, Memory32 &memory, const u8 *&hirMap, u32 &returnCode, bool &condition, u64 &timer,
-	u64 *&instructionTime) {
-
-	//For detecting time per instruction
-
-	#ifdef __USE_TIMER__
-		timer = __rdtsc();
-	#else
-		timer;
-	#endif
+	Registers &r, Memory32 &memory, const u8 *&hirMap, u32 &returnCode, bool &condition, u64 &timer, u64 &cycles) {
 
 	//Reset condition (always set unless specified)
 	condition = true;
 
 	//Perform code cached in ir/nir registers
 
-	if (r.cpsr.thumb())
-		returnCode = stepThumb(r, memory, hirMap, condition);
+	if constexpr(isThumb)
+		returnCode = stepThumb(r, memory, hirMap, condition, timer, cycles);
 	else 
-		returnCode = stepArm(r, memory, hirMap, condition);
+		returnCode = stepArm(r, memory, hirMap, condition, timer, cycles);
+
+	//Every instruction is at least 1 cycle
+	++cycles;
 
 	//Process condition codes
 
@@ -99,18 +89,7 @@ __INLINE__ void step(
 
 	//Populate instructions
 
-	fetchNext(r, memory);
-
-	//For printing timing
-
-	#ifdef __USE_TIMER__
-		*instructionTime = __rdtsc() - timer;
-		++instructionTime;
-	#endif
-
-	#ifdef __ALLOW_DEBUG__
-		//printModified();	TODO:
-	#endif
+	fetchNext<isThumb>(r, memory);
 
 }
 
@@ -118,35 +97,37 @@ void Armulator::wait() {
 
 	//Stack
 
-	u64 timer;
 	u32 returnCode;
 	bool condition;
 
-	u64 instructionTimes[1024];						//Instructions to be timed
-	u64 *instructionTime = instructionTimes;		//Instruction number
-
 	memory.selected = &memory.mapRange(r.pc);
-
-	//Populate instructions
-
-	fetchNext(r, memory);
-	fetchNext(r, memory);
 
 	//High register mappings
 
 	u8 mid = Mode::toId(r.cpsr.mode());
 	const u8 *hirMap =
-		Registers::mapping[mid] +
-		r.cpsr.thumb() * 8; /* Optimization for thumb; only fetch from reg if hi register is mentioned*/
+		Registers::mapping[mid]; /* Optimization for thumb; only fetch from reg if hi register is mentioned*/
+
+
+	//Populate instructions
+
+	if (r.cpsr.thumb()) {
+		fetchNext<true>(r, memory);
+		fetchNext<true>(r, memory);
+		hirMap += 8;						//Only needs mapping for the high registers
+	} else {
+		fetchNext<false>(r, memory);
+		fetchNext<false>(r, memory);
+	}
 
 	//Run instructions
-	try {
 
-		while (true)
-			step(r, memory, hirMap, returnCode, condition, timer, instructionTime);
+	u64 cycles{};
+	u64 timer = std::chrono::high_resolution_clock::now().time_since_epoch().count();
 
-	} catch (std::exception e) {
-		for (u64 *inst = instructionTimes; inst < instructionTime; ++inst)
-			printf("%llu\n", *inst);
-	}
+	while (true)
+		if (r.cpsr.thumb())
+			step<true>(r, memory, hirMap, returnCode, condition, timer, cycles);
+		else
+			step<false>(r, memory, hirMap, returnCode, condition, timer, cycles);
 }
