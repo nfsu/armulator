@@ -24,6 +24,7 @@ namespace arm {
 		//@param[in] mode; in what mode the emulator is launched (default = user)
 
 		Armulator(const List<Memory32::Range> &ranges, u32 entry, Mode::E mode = Mode::USR);
+		~Armulator() = default;
 
 		Armulator(const Armulator&) = delete;
 		Armulator(Armulator&&) = delete;

@@ -329,12 +329,13 @@ __INLINE__ u32 stepThumb(arm::Registers &r, arm::Memory32 &memory, const u8 *&m,
 
 			timer = std::chrono::high_resolution_clock::now().time_since_epoch().count() - timer;
 
-			oic::System::log()->fatal(
+			oic::System::log()->warn(
 				String(	"Unsupported operation at ") + num(r.pc) +
 				" with time " + num(timer) + "ns (" +
 				num(f64(timer) / cycles) + "ns avg, " + num(cycles) + " cycles)"
 			);
 
+			throw std::exception();
 			return u32_MAX;
 
 	}
