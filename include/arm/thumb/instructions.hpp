@@ -87,6 +87,10 @@ namespace arm::thumb {
 	static inline TI addPc(LoReg Rd, Value10 offset) { return RegOp8b{ TI(offset >> 2), Rd, ADD_PC }.v; }
 	static inline TI addSp(LoReg Rd, Value10 offset) { return RegOp8b{ TI(offset >> 2), Rd, ADD_SP }.v; }
 
+	static inline TI addSp(i16 value /* -/+ 508 */) { 
+		return RegOp8b{ TI((u8(oic::Math::abs(value) >> 2) & ~0x80) | (value < 0 ? 0x80 : 0)), 0, INCR_SP }.v;
+	}
+
 	//RegOp11b
 
 	/*static inline TI b(Value12 offset) { return RegOp11b{ TI(offset >> 1), B }.v;}*/

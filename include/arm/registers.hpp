@@ -13,8 +13,8 @@ namespace arm {
 
 		count,
 
-		lr = r13,	//Link register
-		sp = r14,	//Stack pointer
+		sp = r13,	//Stack pointer
+		lr = r14,	//Link register
 		pc = r15	//Program counter
 
 	};

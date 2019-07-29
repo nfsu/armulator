@@ -12,8 +12,13 @@ namespace arm::thumb {
 
 	//A 3-bit high register
 	enum HiReg : u8 {
+
 		r8, r9, r10, r11,
-		r12, r13, r14, r15
+		r12, r13, r14, r15,
+
+		sp = HiReg::r13,
+		lr = HiReg::r14,
+		pc = HiReg::r15
 	};
 
 	//A thumb instruction

@@ -111,6 +111,25 @@ BAL myLabel
 BEQ myLabel
 ```
 
+The flags aren't set by all operations; some operations only set negative & zero flags, while alu operations (regularly) set the negative, zero, carry & overflow flags. Other operations such as barrel shifts generally don't set the overflow flag.
+
+These flags are calculated the following way; (a = left, b = right, c = result)
+
+```cpp
+//Zero
+c == 0;
+
+//Negative
+c & i32_MIN;
+
+//TODO: Carry
+
+//Overflow
+(a & i32_MIN) == (b & i32_MIN) && (c & i32_MIN) != (a & i32_MIN)
+```
+
+
+
 ## Modes
 
 Some accessible registers map to different registers depending on the mode set in the PSR. These modes are as follows:

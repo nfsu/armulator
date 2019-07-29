@@ -15,6 +15,11 @@ namespace arm {
 
 	public:
 
+		enum Version {
+			ARM7TDMI,
+			ARM9TDMI
+		};
+
 		//Create the armulator to run the specified rom
 		//@param[in] ranges; the memory ranges the armulator should map and use
 		//@param[in] debug; how to handle printing each step of code
@@ -32,7 +37,7 @@ namespace arm {
 		Armulator &operator=(const Armulator&) = delete;
 		Armulator &operator=(Armulator&&) = delete;
 
-		void wait();	//Performs operations until there are none left
+		void wait(Version v);	//Performs operations until there are none left
 
 		void print();			//Print all registers
 		void printPSR(PSR psr);	//Print the PSR

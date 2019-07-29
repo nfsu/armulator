@@ -39,28 +39,31 @@ void Armulator::printPSR(PSR psr) {
 
 #include "../src/arm/thumb/tharmulator.cpp"
 
+template<Armulator::Version>
 __INLINE__ void stepArm(Registers &, Memory32 &, const u8 *&, u32&, u64&, u64&) {
 	oic::System::log()->fatal("oopsies");
 }
 
 static constexpr u64 conditionFlag = 0x100000000;
 
-template<bool isThumb>
+template<bool isThumb, Armulator::Version v>
 __INLINE__ void step(
-	Registers &r, Memory32 &memory, const u8 *&hirMap, u32 &returnCode, u64 &timer, u64 &cycles) {
+	Registers &r, Memory32 &memory, const u8 *&hirMap, u32 &returnCode, u64 &timer, u64 &cycles
+) {
 
 	//Perform code cached in ir/nir registers
 
 	if constexpr(isThumb)
-		stepThumb(r, memory, hirMap, returnCode, timer, cycles);
+		stepThumb<v>(r, memory, hirMap, returnCode, timer, cycles);
 	else 
-		stepArm(r, memory, hirMap, returnCode, timer, cycles);
+		stepArm<v>(r, memory, hirMap, returnCode, timer, cycles);
 
 	++cycles;
 
 }
 
-void Armulator::wait() {
+template<Armulator::Version v>
+__INLINE__ void wait(Registers &r, Memory32 &memory) {
 
 	//Stack
 
@@ -93,7 +96,16 @@ void Armulator::wait() {
 
 	while (true)
 		if (r.cpsr.thumb())
-			step<true>(r, memory, hirMap, returnCode, timer, cycles);
+			step<true, v>(r, memory, hirMap, returnCode, timer, cycles);
 		else
-			step<false>(r, memory, hirMap, returnCode, timer, cycles);
+			step<false, v>(r, memory, hirMap, returnCode, timer, cycles);
+}
+
+void Armulator::wait(Armulator::Version v) {
+
+	if (v == Armulator::ARM7TDMI)
+		::wait<Armulator::ARM7TDMI>(r, memory);
+	else
+		::wait<Armulator::ARM9TDMI>(r, memory);
+
 }
