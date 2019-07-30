@@ -133,7 +133,7 @@ namespace arm {
 
 		template<typename AddressType, typename T>
 		void Memory<AddressType, T>::free(Range &r) {
-			win::VirtualFree((win::LPVOID)usz(r.start), 0, MEM_RELEASE);
+			win::VirtualFree((win::LPVOID)(usz(r.start) | mapping), 0, MEM_RELEASE);
 		}
 
 	#else
