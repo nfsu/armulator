@@ -19,47 +19,57 @@ namespace arm {
 
 		static constexpr AddressSpace increment = !isAscending ? (~AddressSpace(sizeof(T))) + 1 : AddressSpace(sizeof(T));
 
-		Stack(Memory<AddressSpace> *memory): memory(memory) {}
-
-		__forceinline void push(AddressSpace &sp, T &a) {
+		__INLINE__ void push(const MemoryRange<AddressSpace> &range, AddressSpace &sp, T &a) {
 
 			if constexpr (!isEmpty) {
 				sp += increment;
-				memory->set(sp, a);
+				*(T*)range.map(sp) = a;
 			} else {
-				memory->set(sp, a);
+				*(T*)range.map(sp) = a;
 				sp += increment;
 			}
 
 		}
 
 		template<typename ...args>
-		__forceinline void push(AddressSpace &sp, T &a, args &...arg) {
-			push(sp, a);
-			push(sp, arg...);
+		__INLINE__ void push(const MemoryRange<AddressSpace> &range, AddressSpace &sp, T &a, args &...arg) {
+			push(range, sp, a);
+			push(range, sp, arg...);
 		}
 
-		__forceinline void pop(AddressSpace &sp, T &a) {
+		template<typename ...args>
+		__INLINE__ void push(Memory<AddressSpace> &memory, AddressSpace &sp, args &...arg) {
+
+			const MemoryRange<AddressSpace> &range = memory.mapRange(sp);
+
+			if (range.access == AccessFlag::READ_ONLY)
+				oic::System::log()->fatal("Can't push to a readonly address");
+
+			push(range, sp, arg...);
+		}
+
+		__INLINE__ void pop(const MemoryRange<AddressSpace> &range, AddressSpace &sp, T &a) {
 
 			if constexpr (!isEmpty) {
-				memory->get(sp, a);
+				a = *(T*)range.map(sp);
 				sp -= increment;
 			} else {
 				sp -= increment;
-				memory->get(sp, a);
+				a = *(T*)range.map(sp);
 			}
 
 		}
 
 		template<typename ...args>
-		__forceinline void pop(AddressSpace &sp, T &a, args &...arg) {
-			pop(sp, a);
-			pop(sp, arg...);
+		__INLINE__ void pop(const MemoryRange<AddressSpace> &range, AddressSpace &sp, T &a, args &...arg) {
+			pop(range, sp, a);
+			pop(range, sp, arg...);
 		}
 
-	private:
-
-		Memory<AddressSpace> *memory;
+		template<typename ...args>
+		__INLINE__ void pop(Memory<AddressSpace> &memory, AddressSpace &sp, args &...arg) {
+			pop(memory.mapRange(sp), sp, arg...);
+		}
 
 	};
 

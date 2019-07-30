@@ -79,10 +79,10 @@ __INLINE__ void fetchNext(arm::Registers &r, arm::Memory32 &memory) {
 	r.ir = r.nir;
 
 	if constexpr (isThumb) {
-		r.nir = *( u16 *) memory.selected->map(r.pc);
+		r.nir = memory.get<u16>(r.pc);
 		r.pc += 2;
 	} else {
-		r.nir = *( u32 *) memory.selected->map(r.pc);
+		r.nir = memory.get<u32>(r.pc);
 		r.pc += 4;
 	}
 
@@ -622,10 +622,6 @@ __INLINE__ void stepThumb(arm::Registers &r, arm::Memory32 &memory, const u8 *&m
 
 branchArm:
 
-	//Jumped to different memory range, so switch it
-	if(!memory.selected->contains(r.pc))
-		memory.selected = &memory.mapRange(r.pc);
-
 	//Fill up pipeline
 	fetchNext<false>(r, memory);
 	fetchNext<false>(r, memory);
@@ -633,10 +629,6 @@ branchArm:
 	goto branch;
 
 branchThumb:
-
-	//Jumped to different memory range, so switch it
-	if (!memory.selected->contains(r.pc))
-		memory.selected = &memory.mapRange(r.pc);
 
 	//Fill up pipeline
 	fetchNext<true>(r, memory);

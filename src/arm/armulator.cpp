@@ -2,7 +2,7 @@
 using namespace arm;
 
 Armulator::Armulator(const List<Memory32::Range> &ranges, u32 entry, Mode::E mode):
-	memory(ranges), stack(&memory) {
+	memory(ranges) {
 
 	r.cpsr.thumb(entry & 1);
 	r.cpsr.mode(mode);
@@ -68,8 +68,6 @@ __INLINE__ void wait(Registers &r, Memory32 &memory) {
 	//Stack
 
 	u32 returnCode;
-
-	memory.selected = &memory.mapRange(r.pc);
 
 	//High register mappings
 
