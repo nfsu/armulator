@@ -7,10 +7,11 @@
 
 namespace arm {
 
-	#define __ALLOW_DEBUG__
-	#define __INLINE__  __forceinline
+	//#define __ALLOW_DEBUG__
 
 	//!ARM7 emulator
+	//The armulator **RUNS IN THIS PROCESS** giving it access to memory allocated here as well
+	//But only if it's allocated at 0xF0000000 -> 0xFFFFFFFF
 	struct Armulator {
 
 	public:
@@ -45,7 +46,6 @@ namespace arm {
 		Registers r;
 
 		Memory32 memory;
-		Stack32<0, 0> stack;
 
 	private:
 
