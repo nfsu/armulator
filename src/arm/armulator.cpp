@@ -9,7 +9,7 @@ Armulator::Armulator(const List<Memory32::Range> &ranges, u32 entry, Mode::E mod
 	r.pc = entry & ~1;
 }
 
-void Armulator::print() {
+void Armulator::print(Registers &r) {
 
 	u8 modeId = Mode::toId(r.cpsr.mode());
 	auto mapping = Registers::mapping[modeId];
@@ -92,11 +92,14 @@ __INLINE__ void wait(Registers &r, Memory32 &memory) {
 	u64 cycles{};
 	u64 timer = std::chrono::high_resolution_clock::now().time_since_epoch().count();
 
-	while (true)
+	while (true) {
 		if (r.cpsr.thumb())
 			step<true, v>(r, memory, hirMap, returnCode, timer, cycles);
 		else
 			step<false, v>(r, memory, hirMap, returnCode, timer, cycles);
+
+		//Armulator::print(r);
+	}
 }
 
 void Armulator::wait(Armulator::Version v) {

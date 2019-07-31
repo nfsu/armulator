@@ -571,8 +571,12 @@ __INLINE__ void stepThumb(arm::Registers &r, arm::Memory32 &memory, const u8 *&m
 		//Layout:
 		//Rd3_8, i8_0
 
-		case ADD_PC:
+		case LDR_PC:
+			printOp2i(LDR, Rd3_8, u32(arm::pc), i8_0 << 2);
+			r.loReg[Rd3_8] = memory.get<u32>(((r.pc >> 2) | i8_0) << 2);
+			goto fetch;
 
+		case ADD_PC:
 			printOp2i(ADD, Rd3_8, u32(arm::pc), i8_0 << 2);
 			r.loReg[Rd3_8] = r.pc + (i8_0 << 2);
 			goto fetch;
@@ -612,7 +616,7 @@ __INLINE__ void stepThumb(arm::Registers &r, arm::Memory32 &memory, const u8 *&m
 			oic::System::log()->warn(
 				String(	"Unsupported operation at ") + num(r.pc) +
 				" with time " + num(timer) + "ns (" +
-				num(f64(timer) / cycles) + "ns avg, " + num(cycles) + " cycles)"
+				num(f64(timer) / cycles) + "ns avg, " + num(cycles) + " cycles): " + num(r.ir)
 			);
 
 			throw std::exception();

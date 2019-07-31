@@ -40,8 +40,8 @@ namespace arm {
 
 		void wait(Version v);	//Performs operations until there are none left
 
-		void print();			//Print all registers
-		void printPSR(PSR psr);	//Print the PSR
+		static void print(Registers &r);			//Print all registers
+		static void printPSR(PSR psr);				//Print the PSR
 
 		Registers r;
 
