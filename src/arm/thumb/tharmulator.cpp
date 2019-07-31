@@ -3,7 +3,7 @@
 #include "arm/helper.hpp"
 using namespace arm::thumb;
 
-//TODO: Temp
+#ifdef __ALLOW_DEBUG__
 
 #include <sstream>
 
@@ -13,8 +13,6 @@ String num(const T &t) {
 	ss << t;
 	return ss.str();
 }
-
-#ifdef __ALLOW_DEBUG__
 
 	#define printOp2i(name, Rd, Rs, i)																			\
 		oic::System::log()->println(String(#name) + " r" + num(Rd) + ", r" + num(Rs) + ", #" + num(i));
@@ -571,9 +569,19 @@ __INLINE__ void stepThumb(arm::Registers &r, arm::Memory32 &memory, const u8 *&m
 		//Layout:
 		//Rd3_8, i8_0
 
+		case STR_SP:
+			printOp2i(STR, Rd3_8, u32(arm::sp), i8_0 << 2);
+			memory.set(r.registers[m[HiReg::sp]] + (i8_0 << 2), r.loReg[Rd3_8]);
+			goto fetch;
+
+		case LDR_SP:
+			printOp2i(STR, Rd3_8, u32(arm::sp), i8_0 << 2);
+			r.loReg[Rd3_8] = memory.get<u32>(r.registers[m[HiReg::sp]] + (i8_0 << 2));
+			goto fetch;
+
 		case LDR_PC:
 			printOp2i(LDR, Rd3_8, u32(arm::pc), i8_0 << 2);
-			r.loReg[Rd3_8] = memory.get<u32>(((r.pc >> 2) | i8_0) << 2);
+			r.loReg[Rd3_8] = memory.get<u32>(((r.pc >> 2) + i8_0) << 2);
 			goto fetch;
 
 		case ADD_PC:
@@ -590,8 +598,6 @@ __INLINE__ void stepThumb(arm::Registers &r, arm::Memory32 &memory, const u8 *&m
 			printOp1i(ADD, u32(arm::sp), r.ir & 0x80 ? -i32(i7_0 << 2) : i32(i7_0 << 2));
 			r.registers[m[HiReg::sp]] = r.ir & 0x80 ? -i32(i7_0 << 2) : i32(i7_0 << 2);
 			goto fetch;
-
-		//TODO: STR_SP, LDR_SP
 
 		//TODO: PUSH { Rs... }	/ PUSH { Rs..., LR }
 		//TODO: POP { Rs... } / POP { Rs..., PC }
@@ -611,14 +617,9 @@ __INLINE__ void stepThumb(arm::Registers &r, arm::Memory32 &memory, const u8 *&m
 
 		default:
 
+			#ifdef __USE_TIMER__
 			timer = std::chrono::high_resolution_clock::now().time_since_epoch().count() - timer;
-
-			oic::System::log()->warn(
-				String(	"Unsupported operation at ") + num(r.pc) +
-				" with time " + num(timer) + "ns (" +
-				num(f64(timer) / cycles) + "ns avg, " + num(cycles) + " cycles): " + num(r.ir)
-			);
-
+			#endif
 			throw std::exception();
 			return;
 

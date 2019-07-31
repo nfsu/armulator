@@ -1,6 +1,10 @@
 #include "arm/armulator.hpp"
 using namespace arm;
 
+#if _WIN32
+#include <intrin.h>
+#endif
+
 Armulator::Armulator(const List<Memory32::Range> &ranges, u32 entry, Mode::E mode):
 	memory(ranges) {
 
@@ -89,16 +93,53 @@ __INLINE__ void wait(Registers &r, Memory32 &memory) {
 
 	//Run instructions
 
-	u64 cycles{};
-	u64 timer = std::chrono::high_resolution_clock::now().time_since_epoch().count();
+	u64 cycles{}, instruction{};
+	u64 timer;
+	
+	#ifdef __USE_CYCLE_TIMER__
+		u64 timings[128] {}, instruction {}, timing;
+	#endif
+
+	#ifdef __USE_TIMER__
+		timer = std::chrono::high_resolution_clock::now().time_since_epoch().count();
+	#endif
 
 	while (true) {
+
+		#ifdef __USE_EXIT__
+			if (r.ir == 0xC0DE) {
+
+				#ifdef __USE_TIMER__
+				
+					timer = std::chrono::high_resolution_clock::now().time_since_epoch().count() - timer;
+
+					#ifdef __USE_CYCLE_TIMER__
+						for(usz i = 0; i < instruction; ++i)
+							printf("%zu %llu\n", i, timings[i]);
+					#endif
+
+					printf("%llu cycles (%llu instructions): %lluns (%fns/c, %fns/i)\n", cycles, instruction, timer, f64(timer) / cycles, f64(timer) / instruction);
+
+				#endif
+
+				throw std::exception();
+			}
+		#endif
+		
+		#ifdef __USE_CYCLE_TIMER__
+			timing = __rdtsc();
+		#endif
+
 		if (r.cpsr.thumb())
 			step<true, v>(r, memory, hirMap, returnCode, timer, cycles);
 		else
 			step<false, v>(r, memory, hirMap, returnCode, timer, cycles);
 
-		//Armulator::print(r);
+		#ifdef __USE_CYCLE_TIMER__
+			timings[instruction] = __rdtsc() - timing;
+		#endif
+
+		++instruction;
 	}
 }
 

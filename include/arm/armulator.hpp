@@ -8,6 +8,9 @@
 namespace arm {
 
 	//#define __ALLOW_DEBUG__
+	#define __USE_TIMER__
+	//#define __USE_CYCLE_TIMER__
+	#define __USE_EXIT__
 
 	//!ARM7 emulator
 	//The armulator **RUNS IN THIS PROCESS** giving it access to memory allocated here as well
@@ -16,9 +19,28 @@ namespace arm {
 
 	public:
 
+		struct VersionSpec {
+
+			enum Version {
+				v4, v5
+			};
+
+			enum Flags {
+
+				T = 1 << 8,			//Thumb mode
+				D = 1 << 9,			//Debugger
+				M = 1 << 10,		//Multiplier
+				I = 1 << 11,			//Debug operations through ICE
+
+				TDMI = T | D | M | I
+
+			};
+
+		};
+
 		enum Version {
-			ARM7TDMI,
-			ARM9TDMI
+			ARM7TDMI = VersionSpec::v4 | VersionSpec::TDMI,
+			ARM9TDMI = VersionSpec::v5 | VersionSpec::TDMI,
 		};
 
 		//Create the armulator to run the specified rom

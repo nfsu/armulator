@@ -21,12 +21,6 @@ namespace arm {
 			start(start), size(size), write(write), name(name), altName(altName),
 			initMemory(initMemory) {}
 
-		inline bool intersects(const MemoryRange &other) const {
-			return (start <= other.start && end() > other.start) || (other.start <= start && other.end() > end());
-		}
-
-		inline AddressType end() const { return start + size; }
-
 	};
 
 	template<
@@ -39,11 +33,13 @@ namespace arm {
 
 		using Range = MemoryRange<AddressType>;
 
-		static constexpr usz mapping = sizeof(usz) == 8 ? usz(0xF0000000) : usz(0xF0000000);
+		static constexpr usz mapping = usz(0x80000000);
 
 	private:
 
+		static void allocate();
 		static void allocate(Range &r);
+		static void free();
 		static void free(Range &r);
 
 	public:
@@ -52,17 +48,16 @@ namespace arm {
 
 			static_assert(sizeof(AddressType) <= sizeof(usz), "32-bit architectures can't support 64 architectures");
 
-			for (usz i = 0, j = ranges.size(); i < j; ++i)
-				for (usz k = 0; k < j; ++k)
-					if (i != k && ranges[k].intersects(ranges[i]))
-						oic::System::log()->fatal("Virtual memory ranges intersect");
+			allocate();
 
 			for (Range &range : ranges)
 				allocate(range);
-
 		}
 
 		~Memory() {
+
+			free();
+
 			for (Range &range : ranges)
 				free(range);
 		}
@@ -70,13 +65,13 @@ namespace arm {
 		//Gets the variable from the address (read)
 		template<typename T>
 		__INLINE__ const T &get(AddressType ptr) const {
-			return *(T*)(usz(ptr) | mapping);
+			return *(T*)(mapping | ptr);
 		}
 
 		//Sets the variable at the address (write)
 		template<typename T>
 		__INLINE__ T &set(AddressType ptr, const T &t) {
-			return *(T*)(usz(ptr) | mapping) = t;
+			return *(T*)(mapping | ptr) = t;
 		}
 
 		Memory(const Memory&) = delete;
@@ -103,15 +98,20 @@ namespace arm {
 		}
 
 		template<typename AddressType, typename T>
+		void Memory<AddressType, T>::allocate() {
+
+			if (!win::VirtualAlloc(win::LPVOID(mapping), mapping, MEM_RESERVE, PAGE_READWRITE))
+				oic::System::log()->fatal("Couldn't reserve memory");
+
+		}
+
+		template<typename AddressType, typename T>
 		void Memory<AddressType, T>::allocate(Range &r) {
 
 			win::LPVOID ou{};
-			usz map = usz(r.start) | mapping;
+			usz map = mapping | r.start;
 
-			if (
-				(ou = win::VirtualAlloc((win::LPVOID)map, usz(r.size), MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE))
-				!= (win::LPVOID)map
-			)
+			if ((ou = win::VirtualAlloc(win::LPVOID(map), usz(r.size), MEM_COMMIT, PAGE_READWRITE)) == nullptr)
 				oic::System::log()->fatal("Couldn't allocate memory");
 
 			memset(ou, 0, r.size);
@@ -128,12 +128,16 @@ namespace arm {
 				win::DWORD oldProtect;
 				win::VirtualProtect(ou, usz(r.size), PAGE_READONLY, &oldProtect);
 			}
-
 		}
 
 		template<typename AddressType, typename T>
 		void Memory<AddressType, T>::free(Range &r) {
-			win::VirtualFree((win::LPVOID)(usz(r.start) | mapping), 0, MEM_RELEASE);
+			win::VirtualFree(win::LPVOID(mapping | r.start), 0, MEM_DECOMMIT);
+		}
+
+		template<typename AddressType, typename T>
+		void Memory<AddressType, T>::free() {
+			win::VirtualFree(win::LPVOID(mapping), mapping, MEM_RELEASE);
 		}
 
 	#else
