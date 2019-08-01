@@ -137,8 +137,10 @@ __INLINE__ void wait(Registers &r, Memory32 &memory) {
 		#ifdef __USE_CYCLE_TIMER__
 			timings[instruction] = __rdtsc() - timing;
 		#endif
-
-		++instruction;
+			
+		#ifdef __USE_TIMER__
+			++instruction;
+		#endif
 	}
 }
 

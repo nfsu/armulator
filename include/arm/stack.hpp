@@ -19,56 +19,40 @@ namespace arm {
 
 		static constexpr AddressSpace increment = !isAscending ? (~AddressSpace(sizeof(T))) + 1 : AddressSpace(sizeof(T));
 
-		__INLINE__ void push(const MemoryRange<AddressSpace> &range, AddressSpace &sp, T &a) {
+		__INLINE__ static void push(const Memory<AddressSpace> &m, AddressSpace &sp, const T &a) {
 
 			if constexpr (!isEmpty) {
 				sp += increment;
-				*(T*)range.map(sp) = a;
+				m.set(sp, a);
 			} else {
-				*(T*)range.map(sp) = a;
+				m.set(sp, a);
 				sp += increment;
 			}
 
 		}
 
 		template<typename ...args>
-		__INLINE__ void push(const MemoryRange<AddressSpace> &range, AddressSpace &sp, T &a, args &...arg) {
-			push(range, sp, a);
-			push(range, sp, arg...);
+		__INLINE__ static void push(const Memory<AddressSpace> &m, AddressSpace &sp, const T &a, const args &...arg) {
+			push(m, sp, a);
+			push(m, sp, arg...);
 		}
 
-		template<typename ...args>
-		__INLINE__ void push(Memory<AddressSpace> &memory, AddressSpace &sp, args &...arg) {
-
-			const MemoryRange<AddressSpace> &range = memory.mapRange(sp);
-
-			if (range.access == AccessFlag::READ_ONLY)
-				oic::System::log()->fatal("Can't push to a readonly address");
-
-			push(range, sp, arg...);
-		}
-
-		__INLINE__ void pop(const MemoryRange<AddressSpace> &range, AddressSpace &sp, T &a) {
+		__INLINE__ static void pop(const Memory<AddressSpace> &m, AddressSpace &sp, T &a) {
 
 			if constexpr (!isEmpty) {
-				a = *(T*)range.map(sp);
+				a = m.get<T>(sp);
 				sp -= increment;
 			} else {
 				sp -= increment;
-				a = *(T*)range.map(sp);
+				a = m.get<T>(sp);
 			}
 
 		}
 
 		template<typename ...args>
-		__INLINE__ void pop(const MemoryRange<AddressSpace> &range, AddressSpace &sp, T &a, args &...arg) {
-			pop(range, sp, a);
-			pop(range, sp, arg...);
-		}
-
-		template<typename ...args>
-		__INLINE__ void pop(Memory<AddressSpace> &memory, AddressSpace &sp, args &...arg) {
-			pop(memory.mapRange(sp), sp, arg...);
+		__INLINE__ static void pop(const Memory<AddressSpace> &m, AddressSpace &sp, T &a, args &...arg) {
+			pop(m, sp, a);
+			pop(m, sp, arg...);
 		}
 
 	};

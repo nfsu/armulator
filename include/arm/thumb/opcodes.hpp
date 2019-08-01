@@ -53,15 +53,23 @@ namespace arm::thumb {
 		LDR = 0b0'1011'00,
 		LDRH = 0b0'1011'01,
 		LDRB = 0b0'1011'10,
-		LDSH = 0b0'1011'11,
-
-		ADD_TO_SP = 0b1'0110'00,
-		PUSH = 0b1'0110'10,
-		POP = 0b1'0111'10
+		LDSH = 0b0'1011'11
 
 	};
 
-	//First 8-bits of an opcode (
+	//First 9-bits of an opcode
+	enum OpCode9 : u8 {
+
+		ADD_TO_SP = 0b1'0110'00'0,
+		SUB_TO_SP = 0b1'0110'00'1,
+		PUSH = 0b1'0110'10'0,
+		PUSH_LR = 0b1'0110'10'1,
+		POP = 0b1'0111'10'0,
+		POP_PC = 0b1'0111'10'1
+
+	};
+
+	//First 8-bits of an opcode
 	enum OpCode8 : u8 {
 
 		BEQ = 0b1'101'0000,

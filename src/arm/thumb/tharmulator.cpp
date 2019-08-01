@@ -63,6 +63,7 @@ String num(const T &t) {
 #define i5_6_2 ((r.ir >> 4) & 0x7C)
 #define Op5_11 (r.ir >> 11)
 #define Op7_9 (r.ir >> 9)
+#define Op9_7 (r.ir >> 7)
 #define Op10_6 (r.ir >> 6)
 #define i7_0 (r.ir & 0x7F)
 #define i8_0 (r.ir & 0xFF)
@@ -90,8 +91,10 @@ __INLINE__ void fetchNext(arm::Registers &r, arm::Memory32 &memory) {
 //Where m is the mapping of high registers (type mapping + 8) so m[HiReg] matches the register id it should fetch from
 //Normal instructions take 1 cycle
 
-template<arm::Armulator::Version>
+template<arm::Armulator::Version, bool ascendingStack = false, bool emptyStack = false>
 __INLINE__ void stepThumb(arm::Registers &r, arm::Memory32 &memory, const u8 *&m, u64 &cycles) {
+
+	using Stack = arm::Stack32<ascendingStack, emptyStack>;
 
 	u32 reg;
 
@@ -199,21 +202,11 @@ __INLINE__ void stepThumb(arm::Registers &r, arm::Memory32 &memory, const u8 *&m
 			r.loReg[Rd3_8] = r.registers[m[HiReg::sp]] + (i8_0 << 2);
 			goto fetch;
 
-		case INCR_SP:
-
-			reg = i7_0 << 2;
-
-			if (r.ir & 0x80)
-				reg = -i32(reg);
-
-			printOp1i(ADD, u32(arm::sp), i32(reg));
-			r.registers[m[HiReg::sp]] = reg;
-			goto fetch;
-
 		//Unconditional branch
 		//Interpret 11-bit 2's complement as u32
 		//Assembler takes into account prefetch
 		//Takes 3 cycles
+		//TODO: Test this and turn it into an instruction
 
 		case B:
 			reg = ((r.ir << 1) & 0xFFE) | (r.ir & 0x400 * (0xFFFFF000 / 0x400));
@@ -391,6 +384,8 @@ __INLINE__ void stepThumb(arm::Registers &r, arm::Memory32 &memory, const u8 *&m
 		//Rd3_0, Rs3_3, Rni3_6, Op7_9
 
 		case ADD_SUB:
+		case ST:
+		case LD:
 
 			switch (Op7_9) {
 
@@ -415,44 +410,44 @@ __INLINE__ void stepThumb(arm::Registers &r, arm::Memory32 &memory, const u8 *&m
 					goto setNZCV;
 
 				case STR:
-					printOp2i(STR, Rd3_0, Rs3_3, Rni3_6 << 2);
-					memory.set(r.loReg[Rs3_3] + (Rni3_6 << 2), r.loReg[Rd3_0]);
+					printOp3(STR, Rd3_0, Rs3_3, Rni3_6);
+					memory.set(r.loReg[Rs3_3] + r.loReg[Rni3_6], r.loReg[Rd3_0]);
 					goto fetch;
 
 				case STRH:
-					printOp2i(STRH, Rd3_0, Rs3_3, Rni3_6 << 1);
-					memory.set(r.loReg[Rs3_3] + (Rni3_6 << 1), u16(r.loReg[Rd3_0]));
+					printOp3(STRH, Rd3_0, Rs3_3, Rni3_6);
+					memory.set(r.loReg[Rs3_3] + r.loReg[Rni3_6], u16(r.loReg[Rd3_0]));
 					goto fetch;
 
 				case STRB:
-					printOp2i(STRB, Rd3_0, Rs3_3, Rni3_6);
-					memory.set(r.loReg[Rs3_3] + Rni3_6, u8(r.loReg[Rd3_0]));
+					printOp3(STRB, Rd3_0, Rs3_3, Rni3_6);
+					memory.set(r.loReg[Rs3_3] + r.loReg[Rni3_6], u8(r.loReg[Rd3_0]));
 					goto fetch;
 
 				case LDSB:
-					printOp2i(LDSB, Rd3_0, Rs3_3, Rni3_6);
-					reg = memory.get<u8>(r.loReg[Rs3_3] + Rni3_6);
+					printOp3(LDSB, Rd3_0, Rs3_3, Rni3_6);
+					reg = memory.get<u8>(r.loReg[Rs3_3] + r.loReg[Rni3_6]);
 					r.loReg[Rd3_0] = reg | (reg & 0x80 * (0xFFFFFF00 / 0x80));
 					goto fetch;
 
 				case LDR:
-					printOp2i(LDR, Rd3_0, Rs3_3, Rni3_6 << 2);
-					r.loReg[Rd3_0] = memory.get<u32>(r.loReg[Rs3_3] + (Rni3_6 << 2));
+					printOp3(LDR, Rd3_0, Rs3_3, Rni3_6);
+					r.loReg[Rd3_0] = memory.get<u32>(r.loReg[Rs3_3] + r.loReg[Rni3_6]);
 					goto fetch;
 
 				case LDRH:
-					printOp2i(LDRH, Rd3_0, Rs3_3, Rni3_6 << 1);
-					r.loReg[Rd3_0] = memory.get<u16>(r.loReg[Rs3_3] + (Rni3_6 << 1));
+					printOp3(LDRH, Rd3_0, Rs3_3, Rni3_6);
+					r.loReg[Rd3_0] = memory.get<u16>(r.loReg[Rs3_3] + r.loReg[Rni3_6]);
 					goto fetch;
 
 				case LDRB:
-					printOp2i(LDRB, Rd3_0, Rs3_3, Rni3_6);
-					r.loReg[Rd3_0] = memory.get<u8>(r.loReg[Rs3_3] + Rni3_6);
+					printOp3(LDRB, Rd3_0, Rs3_3, Rni3_6);
+					r.loReg[Rd3_0] = memory.get<u8>(r.loReg[Rs3_3] + r.loReg[Rni3_6]);
 					goto fetch;
 
 				case LDSH:
-					printOp2i(LDSH, Rd3_0, Rs3_3, Rni3_6 << 1);
-					reg = memory.get<u16>(r.loReg[Rs3_3] + (Rni3_6 << 1));
+					printOp3(LDSH, Rd3_0, Rs3_3, Rni3_6);
+					reg = memory.get<u16>(r.loReg[Rs3_3] + r.loReg[Rni3_6]);
 					r.loReg[Rd3_0] = reg | (reg & 0x8000 * (0xFFFF0000 / 0x8000));
 					goto fetch;
 			}
@@ -647,8 +642,62 @@ __INLINE__ void stepThumb(arm::Registers &r, arm::Memory32 &memory, const u8 *&m
 
 			}
 
-		//TODO: PUSH { Rs... }	/ PUSH { Rs..., LR }
-		//TODO: POP { Rs... } / POP { Rs..., PC }
+		//Layout:
+		//i7_0, Op9_7
+
+		case INCR_SP:
+		case PUSH_POP:
+
+			switch (Op9_7) {
+
+				case ADD_TO_SP:
+					printOp1i(ADD, u32(arm::sp), i7_0 << 2);
+					r.registers[m[HiReg::sp]] += i7_0 << 2;
+					break;
+
+				case SUB_TO_SP:
+					printOp1i(ADD, u32(arm::sp), -i32(i7_0 << 2));
+					r.registers[m[HiReg::sp]] -= i7_0 << 2;
+					break;
+
+				//Push and pop instructions
+				//Assuming r0 is located closest to the top and lr is located furthest from the top
+
+				case PUSH_LR:
+
+					Stack::push(memory, r.registers[m[HiReg::sp]], r.registers[m[HiReg::lr]]);
+					++cycles;
+
+				case PUSH:
+
+					for(usz i = 0; i < 8; ++i)
+						if (r.ir & (0x80 >> i)) {
+							Stack::push(memory, r.registers[m[HiReg::sp]], r.loReg[7 - i]);
+							++cycles;
+						}
+
+					break;
+
+				case POP_PC:
+					++cycles;
+
+				case POP:
+
+					for (usz i = 0; i < 8; ++i)
+						if (r.ir & (1 << i)) {
+							Stack::pop(memory, r.registers[m[HiReg::sp]], r.loReg[i]);
+							++cycles;
+						}
+
+					if (r.ir & 0x100)
+						Stack::pop(memory, r.registers[m[HiReg::sp]], r.registers[m[HiReg::pc]]);
+
+					break;
+
+			}
+			
+			goto fetch;
+
 
 		//TODO: LDMIA takes 2 + n cycles
 		//TODO: STMIA takes 1 + n cycles
