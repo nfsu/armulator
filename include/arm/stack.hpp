@@ -19,7 +19,7 @@ namespace arm {
 
 		static constexpr AddressSpace increment = !isAscending ? (~AddressSpace(sizeof(T))) + 1 : AddressSpace(sizeof(T));
 
-		__INLINE__ static void push(const Memory<AddressSpace> &m, AddressSpace &sp, const T &a) {
+		__INLINE__ static void push(Memory<AddressSpace> &m, AddressSpace &sp, const T &a) {
 
 			if constexpr (!isEmpty) {
 				sp += increment;
@@ -32,7 +32,7 @@ namespace arm {
 		}
 
 		template<typename ...args>
-		__INLINE__ static void push(const Memory<AddressSpace> &m, AddressSpace &sp, const T &a, const args &...arg) {
+		__INLINE__ static void push(Memory<AddressSpace> &m, AddressSpace &sp, const T &a, const args &...arg) {
 			push(m, sp, a);
 			push(m, sp, arg...);
 		}

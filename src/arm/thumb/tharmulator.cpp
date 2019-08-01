@@ -698,7 +698,6 @@ __INLINE__ void stepThumb(arm::Registers &r, arm::Memory32 &memory, const u8 *&m
 			
 			goto fetch;
 
-
 		//TODO: LDMIA takes 2 + n cycles
 		//TODO: STMIA takes 1 + n cycles
 
