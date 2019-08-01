@@ -44,23 +44,21 @@ void Armulator::printPSR(PSR psr) {
 #include "../src/arm/thumb/tharmulator.cpp"
 
 template<Armulator::Version>
-__INLINE__ void stepArm(Registers &, Memory32 &, const u8 *&, u32&, u64&, u64&) {
+__INLINE__ void stepArm(Registers &, Memory32 &, const u8 *&, u64&) {
 	oic::System::log()->fatal("oopsies");
 }
 
 static constexpr u64 conditionFlag = 0x100000000;
 
 template<bool isThumb, Armulator::Version v>
-__INLINE__ void step(
-	Registers &r, Memory32 &memory, const u8 *&hirMap, u32 &returnCode, u64 &timer, u64 &cycles
-) {
+__INLINE__ void step(Registers &r, Memory32 &memory, const u8 *&hirMap, u64 &cycles) {
 
 	//Perform code cached in ir/nir registers
 
 	if constexpr(isThumb)
-		stepThumb<v>(r, memory, hirMap, returnCode, timer, cycles);
+		stepThumb<v>(r, memory, hirMap, cycles);
 	else 
-		stepArm<v>(r, memory, hirMap, returnCode, timer, cycles);
+		stepArm<v>(r, memory, hirMap, cycles);
 
 	++cycles;
 
@@ -68,10 +66,6 @@ __INLINE__ void step(
 
 template<Armulator::Version v>
 __INLINE__ void wait(Registers &r, Memory32 &memory) {
-
-	//Stack
-
-	u32 returnCode;
 
 	//High register mappings
 
@@ -97,7 +91,7 @@ __INLINE__ void wait(Registers &r, Memory32 &memory) {
 	u64 timer;
 	
 	#ifdef __USE_CYCLE_TIMER__
-		u64 timings[128] {}, instruction {}, timing;
+		u64 timings[128]{}, instruction{}, timing;
 	#endif
 
 	#ifdef __USE_TIMER__
@@ -130,10 +124,15 @@ __INLINE__ void wait(Registers &r, Memory32 &memory) {
 			timing = __rdtsc();
 		#endif
 
-		if (r.cpsr.thumb())
-			step<true, v>(r, memory, hirMap, returnCode, timer, cycles);
-		else
-			step<false, v>(r, memory, hirMap, returnCode, timer, cycles);
+		if constexpr((v & Armulator::VersionSpec::T) != 0) {
+
+			if (r.cpsr.thumb())
+				step<true, v>(r, memory, hirMap, cycles);
+			else
+				step<false, v>(r, memory, hirMap, cycles);
+
+		} else
+			step<false, v>(r, memory, hirMap, cycles);
 
 		#ifdef __USE_CYCLE_TIMER__
 			timings[instruction] = __rdtsc() - timing;

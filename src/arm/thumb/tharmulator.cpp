@@ -91,7 +91,9 @@ __INLINE__ void fetchNext(arm::Registers &r, arm::Memory32 &memory) {
 //Normal instructions take 1 cycle
 
 template<arm::Armulator::Version>
-__INLINE__ void stepThumb(arm::Registers &r, arm::Memory32 &memory, const u8 *&m, u32 &reg, u64 &timer, u64 &cycles) {
+__INLINE__ void stepThumb(arm::Registers &r, arm::Memory32 &memory, const u8 *&m, u64 &cycles) {
+
+	u32 reg;
 
 	switch (Op5_11 /* fetch first 5 bits of opcode */) {
 
@@ -172,14 +174,51 @@ __INLINE__ void stepThumb(arm::Registers &r, arm::Memory32 &memory, const u8 *&m
 			reg = r.loReg[Rd3_8] -= i8_0;
 			goto setNZCV;
 
+		case STR_SP:
+			printOp2i(STR, Rd3_8, u32(arm::sp), i8_0 << 2);
+			memory.set(r.registers[m[HiReg::sp]] + (i8_0 << 2), r.loReg[Rd3_8]);
+			goto fetch;
+
+		case LDR_SP:
+			printOp2i(STR, Rd3_8, u32(arm::sp), i8_0 << 2);
+			r.loReg[Rd3_8] = memory.get<u32>(r.registers[m[HiReg::sp]] + (i8_0 << 2));
+			goto fetch;
+
+		case LDR_PC:
+			printOp2i(LDR, Rd3_8, u32(arm::pc), i8_0 << 2);
+			r.loReg[Rd3_8] = memory.get<u32>(((r.pc >> 2) + i8_0) << 2);
+			goto fetch;
+
+		case ADD_PC:
+			printOp2i(ADD, Rd3_8, u32(arm::pc), i8_0 << 2);
+			r.loReg[Rd3_8] = r.pc + (i8_0 << 2);
+			goto fetch;
+
+		case ADD_SP:
+			printOp2i(ADD, Rd3_8, u32(arm::sp), i8_0 << 2);
+			r.loReg[Rd3_8] = r.registers[m[HiReg::sp]] + (i8_0 << 2);
+			goto fetch;
+
+		case INCR_SP:
+
+			reg = i7_0 << 2;
+
+			if (r.ir & 0x80)
+				reg = -i32(reg);
+
+			printOp1i(ADD, u32(arm::sp), i32(reg));
+			r.registers[m[HiReg::sp]] = reg;
+			goto fetch;
+
 		//Unconditional branch
 		//Interpret 11-bit 2's complement as u32
 		//Assembler takes into account prefetch
 		//Takes 3 cycles
 
 		case B:
-			printOpi(B, ((r.ir << 1) & 0xFFE) | (0x3FFFFC * (r.ir & 0x400)));
-			r.pc += ((r.ir << 1) & 0xFFE) | (0x3FFFFC * (r.ir & 0x400));
+			reg = ((r.ir << 1) & 0xFFE) | (r.ir & 0x400 * (0xFFFFF000 / 0x400));
+			printOpi(B, i32(reg));
+			r.pc += reg;
 			goto branchThumb;
 
 		//Conditional branch
@@ -339,10 +378,12 @@ __INLINE__ void stepThumb(arm::Registers &r, arm::Memory32 &memory, const u8 *&m
 
 			++cycles;
 
-			printOpi(BL, i32((((r.ir << 1) & 0xFFE) | ((r.nir << 12) & 0x7FF000)) | (0xFFFFE000 * (r.nir & 0x400))));
+			reg = (((r.ir << 1) & 0xFFE) | ((r.nir << 12) & 0x7FF000)) | (r.nir & 0x400 * (0xFF800000 / 0x400));
+
+			printOpi(BL, i32(reg));
 
 			r.registers[m[HiReg::lr]] = (r.pc - 2) | 1;		//Next instruction into LR
-			r.pc += (((r.ir << 1) & 0xFFE) | ((r.nir << 12) & 0x7FF000)) | (0xFFFFE000 * (r.nir & 0x400));
+			r.pc += reg;
 
 			goto branchThumb;
 
@@ -373,7 +414,47 @@ __INLINE__ void stepThumb(arm::Registers &r, arm::Memory32 &memory, const u8 *&m
 					reg = r.loReg[Rd3_0] = r.loReg[Rs3_3] - Rni3_6;
 					goto setNZCV;
 
-				//TODO: STR, STRH, STRB, LDSB, LDR, LDRH, LDRB, LDSH
+				case STR:
+					printOp2i(STR, Rd3_0, Rs3_3, Rni3_6 << 2);
+					memory.set(r.loReg[Rs3_3] + (Rni3_6 << 2), r.loReg[Rd3_0]);
+					goto fetch;
+
+				case STRH:
+					printOp2i(STRH, Rd3_0, Rs3_3, Rni3_6 << 1);
+					memory.set(r.loReg[Rs3_3] + (Rni3_6 << 1), u16(r.loReg[Rd3_0]));
+					goto fetch;
+
+				case STRB:
+					printOp2i(STRB, Rd3_0, Rs3_3, Rni3_6);
+					memory.set(r.loReg[Rs3_3] + Rni3_6, u8(r.loReg[Rd3_0]));
+					goto fetch;
+
+				case LDSB:
+					printOp2i(LDSB, Rd3_0, Rs3_3, Rni3_6);
+					reg = memory.get<u8>(r.loReg[Rs3_3] + Rni3_6);
+					r.loReg[Rd3_0] = reg | (reg & 0x80 * (0xFFFFFF00 / 0x80));
+					goto fetch;
+
+				case LDR:
+					printOp2i(LDR, Rd3_0, Rs3_3, Rni3_6 << 2);
+					r.loReg[Rd3_0] = memory.get<u32>(r.loReg[Rs3_3] + (Rni3_6 << 2));
+					goto fetch;
+
+				case LDRH:
+					printOp2i(LDRH, Rd3_0, Rs3_3, Rni3_6 << 1);
+					r.loReg[Rd3_0] = memory.get<u16>(r.loReg[Rs3_3] + (Rni3_6 << 1));
+					goto fetch;
+
+				case LDRB:
+					printOp2i(LDRB, Rd3_0, Rs3_3, Rni3_6);
+					r.loReg[Rd3_0] = memory.get<u8>(r.loReg[Rs3_3] + Rni3_6);
+					goto fetch;
+
+				case LDSH:
+					printOp2i(LDSH, Rd3_0, Rs3_3, Rni3_6 << 1);
+					reg = memory.get<u16>(r.loReg[Rs3_3] + (Rni3_6 << 1));
+					r.loReg[Rd3_0] = reg | (reg & 0x8000 * (0xFFFF0000 / 0x8000));
+					goto fetch;
 			}
 
 		//Layout:
@@ -566,46 +647,11 @@ __INLINE__ void stepThumb(arm::Registers &r, arm::Memory32 &memory, const u8 *&m
 
 			}
 
-		//Layout:
-		//Rd3_8, i8_0
-
-		case STR_SP:
-			printOp2i(STR, Rd3_8, u32(arm::sp), i8_0 << 2);
-			memory.set(r.registers[m[HiReg::sp]] + (i8_0 << 2), r.loReg[Rd3_8]);
-			goto fetch;
-
-		case LDR_SP:
-			printOp2i(STR, Rd3_8, u32(arm::sp), i8_0 << 2);
-			r.loReg[Rd3_8] = memory.get<u32>(r.registers[m[HiReg::sp]] + (i8_0 << 2));
-			goto fetch;
-
-		case LDR_PC:
-			printOp2i(LDR, Rd3_8, u32(arm::pc), i8_0 << 2);
-			r.loReg[Rd3_8] = memory.get<u32>(((r.pc >> 2) + i8_0) << 2);
-			goto fetch;
-
-		case ADD_PC:
-			printOp2i(ADD, Rd3_8, u32(arm::pc), i8_0 << 2);
-			r.loReg[Rd3_8] = r.pc + (i8_0 << 2);
-			goto fetch;
-
-		case ADD_SP:
-			printOp2i(ADD, Rd3_8, u32(arm::sp), i8_0 << 2);
-			r.loReg[Rd3_8] = r.registers[m[HiReg::sp]] + (i8_0 << 2);
-			goto fetch;
-
-		case INCR_SP:
-			printOp1i(ADD, u32(arm::sp), r.ir & 0x80 ? -i32(i7_0 << 2) : i32(i7_0 << 2));
-			r.registers[m[HiReg::sp]] = r.ir & 0x80 ? -i32(i7_0 << 2) : i32(i7_0 << 2);
-			goto fetch;
-
 		//TODO: PUSH { Rs... }	/ PUSH { Rs..., LR }
 		//TODO: POP { Rs... } / POP { Rs..., PC }
 
 		//TODO: LDMIA takes 2 + n cycles
 		//TODO: STMIA takes 1 + n cycles
-
-		//TODO: NOP
 
 		//TODO: ARM9:
 		//TODO: BKPT (Software breakpoint) NOP
@@ -616,10 +662,6 @@ __INLINE__ void stepThumb(arm::Registers &r, arm::Memory32 &memory, const u8 *&m
 		//TODO: Coprocessor and ABORT_BU
 
 		default:
-
-			#ifdef __USE_TIMER__
-			timer = std::chrono::high_resolution_clock::now().time_since_epoch().count() - timer;
-			#endif
 			throw std::exception();
 			return;
 

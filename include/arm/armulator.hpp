@@ -2,9 +2,6 @@
 #include "registers.hpp"
 #include "stack.hpp"
 
-//TODO: Add a callback before and after each step to allow for interception
-//		Allows debugging/printing way more cleanly
-
 namespace arm {
 
 	//#define __ALLOW_DEBUG__
@@ -22,7 +19,7 @@ namespace arm {
 		struct VersionSpec {
 
 			enum Version {
-				v4, v5
+				v4 = 4, v5 = 5
 			};
 
 			enum Flags {
@@ -30,7 +27,7 @@ namespace arm {
 				T = 1 << 8,			//Thumb mode
 				D = 1 << 9,			//Debugger
 				M = 1 << 10,		//Multiplier
-				I = 1 << 11,			//Debug operations through ICE
+				I = 1 << 11,		//Debug operations through ICE
 
 				TDMI = T | D | M | I
 

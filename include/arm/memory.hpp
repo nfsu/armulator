@@ -4,6 +4,12 @@
 #include "system/log.hpp"
 #include "utils/math.hpp"
 
+#ifdef _WIN32
+#include <Windows.h>
+#else
+#include <sys/mman.h>
+#endif
+
 #define __INLINE__  __forceinline
 
 namespace arm {
@@ -41,6 +47,19 @@ namespace arm {
 		static void allocate(Range &r);
 		static void free();
 		static void free(Range &r);
+
+		static void initMemory(Range &r, void *ou) {
+
+			memset(ou, 0, r.size);
+
+			if (r.initMemory.size() <= r.size) {
+				if (r.initMemory.size() != 0) {
+					memcpy(ou, r.initMemory.data(), r.initMemory.size());
+					r.initMemory.clear();
+				}
+			} else
+				oic::System::log()->fatal("Couldn't initialize memory");
+		}
 
 	public:
 
@@ -93,55 +112,72 @@ namespace arm {
 
 	#ifdef _WIN32
 
-		namespace win {
-			#include <Windows.h>
-		}
-
 		template<typename AddressType, typename T>
 		void Memory<AddressType, T>::allocate() {
 
-			if (!win::VirtualAlloc(win::LPVOID(mapping), mapping, MEM_RESERVE, PAGE_READWRITE))
+			if (!VirtualAlloc(LPVOID(mapping), mapping, MEM_RESERVE, PAGE_READWRITE))
 				oic::System::log()->fatal("Couldn't reserve memory");
-
 		}
 
 		template<typename AddressType, typename T>
 		void Memory<AddressType, T>::allocate(Range &r) {
 
-			win::LPVOID ou{};
 			usz map = mapping | r.start;
 
-			if ((ou = win::VirtualAlloc(win::LPVOID(map), usz(r.size), MEM_COMMIT, PAGE_READWRITE)) == nullptr)
+			if (!VirtualAlloc(LPVOID(map), usz(r.size), MEM_COMMIT, PAGE_READWRITE))
 				oic::System::log()->fatal("Couldn't allocate memory");
 
-			memset(ou, 0, r.size);
+			initMemory(r, (void*)map);
 
-			if (r.initMemory.size() <= r.size) {
-				if (r.initMemory.size() != 0) {
-					memcpy(ou, r.initMemory.data(), r.initMemory.size());
-					r.initMemory.clear();
-				}
-			} else
-				oic::System::log()->fatal("Couldn't initialize memory");
+			DWORD oldProtect;
 
-			if (!r.write) {
-				win::DWORD oldProtect;
-				win::VirtualProtect(ou, usz(r.size), PAGE_READONLY, &oldProtect);
-			}
+			if (!r.write && !VirtualProtect((void*)map, usz(r.size), PAGE_READONLY, &oldProtect))
+				oic::System::log()->fatal("Couldn't protect memory");
 		}
 
 		template<typename AddressType, typename T>
 		void Memory<AddressType, T>::free(Range &r) {
-			win::VirtualFree(win::LPVOID(mapping | r.start), 0, MEM_DECOMMIT);
+			VirtualFree(LPVOID(mapping | r.start), 0, MEM_DECOMMIT);
 		}
 
 		template<typename AddressType, typename T>
 		void Memory<AddressType, T>::free() {
-			win::VirtualFree(win::LPVOID(mapping), mapping, MEM_RELEASE);
+			VirtualFree(LPVOID(mapping), mapping, MEM_RELEASE);
 		}
 
 	#else
-		//TODO:
+
+		template<typename AddressType, typename T>
+		void Memory<AddressType, T>::allocate() {
+
+			if(!mmap((void*)mapping, mapping, PROT_NONE, MAP_PRIVATE | MAP_FIXED, 0))
+				oic::System::log()->fatal("Couldn't reserve memory");
+		}
+
+		template<typename AddressType, typename T>
+		void Memory<AddressType, T>::allocate(Range &r) {
+
+			usz map = mapping | r.start;
+			
+			if(!mmap((void*)map, usz(r.size), PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_FIXED, 0))
+				oic::System::log()->fatal("Couldn't allocate memory");
+
+			initMemory(r, (void*)map);
+
+			if (!r.write && mprotect((void*)map, usz(r.size), PROT_READ))
+				oic::System::log()->fatal("Couldn't protect memory");
+		}
+
+		template<typename AddressType, typename T>
+		void Memory<AddressType, T>::allocate(Range &r) {
+			munmap((void*)(mapping | r.start), mapping);
+		}
+
+		template<typename AddressType, typename T>
+		void Memory<AddressType, T>::allocate() {
+			munmap((void*)mapping, mapping);
+		}
+
 	#endif
 
 }
