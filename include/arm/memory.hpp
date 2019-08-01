@@ -10,7 +10,8 @@
 #include <sys/mman.h>
 #endif
 
-#define __INLINE__  __forceinline
+#define __INLINE__
+//#define __INLINE__  __forceinline
 
 namespace arm {
 
@@ -70,7 +71,8 @@ namespace arm {
 			allocate();
 
 			for (Range &range : ranges)
-				allocate(range);
+				if(range.size)
+					allocate(range);
 		}
 
 		~Memory() {
@@ -78,7 +80,8 @@ namespace arm {
 			free();
 
 			for (Range &range : ranges)
-				free(range);
+				if(range.size)
+					free(range);
 		}
 
 		//Gets the variable from the address (read)

@@ -1,6 +1,7 @@
 #pragma once
 #include "psr.hpp"
 #include "types.hpp"
+#include "exception.hpp"
 
 namespace arm {
 
@@ -55,6 +56,35 @@ namespace arm {
 
 		PSR &getSpsr() {
 			return spsr[Mode::toId(cpsr.mode())];
+		}
+
+		template<Exception e>
+		void exception() {
+
+			constexpr Mode::E mode = Mode::E(u32(e) >> 8);
+
+			if constexpr (mode == Mode::FIQ) {
+				if (cpsr.disableFIQ())
+					return;
+			}
+			else if constexpr (mode == Mode::IRQ)
+				if (cpsr.disableIRQ())
+					return;
+
+			spsr[Mode::toId(mode)] = cpsr;			//Save cpsr
+			cpsr.mode(mode);						//Set mode
+
+			//Save next instruction in link register
+			registers[mapping[mode][Register::lr]] = pc - (4 - cpsr.thumb() * 2);
+
+			cpsr.clearThumb();						//Switch to arm mode
+			cpsr.setIrq();							//Prevent IRQ interrupts
+
+			if constexpr (mode == Mode::FIQ)
+				cpsr.setFiq();						//Prevent FIQ interrupts
+
+			pc = u32(e) & 0xFF;							//Jump to vector address
+
 		}
 	};
 

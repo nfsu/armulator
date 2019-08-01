@@ -91,7 +91,7 @@ __INLINE__ void fetchNext(arm::Registers &r, arm::Memory32 &memory) {
 //Where m is the mapping of high registers (type mapping + 8) so m[HiReg] matches the register id it should fetch from
 //Normal instructions take 1 cycle
 
-template<arm::Armulator::Version, bool ascendingStack = false, bool emptyStack = false>
+template<arm::Armulator::Version v, bool ascendingStack = false, bool emptyStack = false>
 __INLINE__ void stepThumb(arm::Registers &r, arm::Memory32 &memory, const u8 *&m, u64 &cycles) {
 
 	using Stack = arm::Stack32<ascendingStack, emptyStack>;
@@ -202,11 +202,43 @@ __INLINE__ void stepThumb(arm::Registers &r, arm::Memory32 &memory, const u8 *&m
 			r.loReg[Rd3_8] = r.registers[m[HiReg::sp]] + (i8_0 << 2);
 			goto fetch;
 
-		//Unconditional branch
+
+		//Load/store multiple
+		//LDMIA takes 2 + n cycles
+		//STMIA takes 1 + n cycles
+
+		case STMIA:
+
+			//TODO: Opcode?
+
+			for (usz i = 0; i < 8; ++i)
+				if (r.ir & (1 << i)) {
+					memory.set(r.loReg[Rd3_8], r.loReg[i]);
+					r.loReg[Rd3_8] += 4;
+					++cycles;
+				}
+
+			goto fetch;
+
+		case LDMIA:
+
+			++cycles;
+
+			//TODO: Opcode?
+
+			for (usz i = 0; i < 8; ++i)
+				if (r.ir & (0x80 >> i)) {
+					memory.set(r.loReg[Rd3_8], r.loReg[7 - i]);
+					r.loReg[Rd3_8] -= 4;
+					++cycles;
+				}
+
+			goto fetch;
+
+		//Unconditional (thumb) branch
 		//Interpret 11-bit 2's complement as u32
 		//Assembler takes into account prefetch
 		//Takes 3 cycles
-		//TODO: Test this and turn it into an instruction
 
 		case B:
 			reg = ((r.ir << 1) & 0xFFE) | (r.ir & 0x400 * (0xFFFFF000 / 0x400));
@@ -214,7 +246,7 @@ __INLINE__ void stepThumb(arm::Registers &r, arm::Memory32 &memory, const u8 *&m
 			r.pc += reg;
 			goto branchThumb;
 
-		//Conditional branch
+		//Conditional (thumb) branch
 		//Assembler takes into account prefetch
 		//Takes 3 cycles
 
@@ -357,13 +389,14 @@ __INLINE__ void stepThumb(arm::Registers &r, arm::Memory32 &memory, const u8 *&m
 				case SWI:
 
 					printOpi(SWI, u32(i8_0));
-					goto fetch;						//TODO: Implement SWI behavior
-
+					r.exception<arm::Exception::SWI>();
+					goto branchArm;
 			}
 
-			r.pc += u32(i8(i8_0)) * 2;
+			r.pc += u32(i8(i8_0)) << 1;
 			goto branchThumb;
 
+		//Long (thumb) branch with link
 		//Fetch nir and construct 23-bit two's complement and jump to it
 		//Assembler takes into account prefetch
 		//Takes 4 cycles
@@ -374,11 +407,32 @@ __INLINE__ void stepThumb(arm::Registers &r, arm::Memory32 &memory, const u8 *&m
 			reg = (((r.ir << 1) & 0xFFE) | ((r.nir << 12) & 0x7FF000)) | (r.nir & 0x400 * (0xFF800000 / 0x400));
 
 			printOpi(BL, i32(reg));
-
 			r.registers[m[HiReg::lr]] = (r.pc - 2) | 1;		//Next instruction into LR
 			r.pc += reg;
 
 			goto branchThumb;
+
+		//Long branch with link
+		//Fetch nir and construct 23-bit two's complement and jump to it
+		//Assembler takes into account prefetch
+		//Takes 4 cycles
+		case BLX:
+
+			if constexpr ((v & 0xFF) >= arm::Armulator::VersionSpec::v5) {
+
+				++cycles;
+
+				reg = (((r.ir << 1) & 0xFFE) | ((r.nir << 12) & 0x7FF000)) | (r.nir & 0x400 * (0xFF800000 / 0x400));
+
+				printOpi(BLX, i32(reg));
+				r.registers[m[HiReg::lr]] = (r.pc - 2) | 1;		//Next instruction into LR
+				r.pc += reg;
+
+				r.cpsr.clearThumb();
+				goto branchArm;
+			}
+			else
+				goto undef;
 
 		//Layout:
 		//Rd3_0, Rs3_3, Rni3_6, Op7_9
@@ -534,9 +588,13 @@ __INLINE__ void stepThumb(arm::Registers &r, arm::Memory32 &memory, const u8 *&m
 					//n = 3 if front multiplier 8 bits are 0 or 1
 					//Default: n = 4, n = 3 on ARM9
 					case MUL:
+
 						printOp2(MUL, Rd3_0, Rs3_3);
 						reg = r.loReg[Rd3_0] *= r.loReg[Rs3_3];
-						r.cpsr.value &= ~r.cpsr.cMask;				//TODO: ARM9 Doesn't destroy carry flag
+						
+						if constexpr((v & 0xFF) <= arm::Armulator::VersionSpec::v4)
+							r.cpsr.value &= ~r.cpsr.cMask;
+
 						goto setNZ;
 
 					case BIC:
@@ -560,7 +618,7 @@ __INLINE__ void stepThumb(arm::Registers &r, arm::Memory32 &memory, const u8 *&m
 						reg = r.registers[m[Rd3_0]] += r.loReg[Rs3_3];
 
 						if (Rd3_0 == HiReg::r15)
-							goto branchThumb;
+							goto branch;
 
 						goto fetch;
 
@@ -570,7 +628,7 @@ __INLINE__ void stepThumb(arm::Registers &r, arm::Memory32 &memory, const u8 *&m
 						reg = r.registers[m[Rd3_0]] += r.registers[m[Rs3_3]];
 
 						if (Rd3_0 == HiReg::r15)
-							goto branchThumb;
+							goto branch;
 
 						goto fetch;
 
@@ -600,7 +658,7 @@ __INLINE__ void stepThumb(arm::Registers &r, arm::Memory32 &memory, const u8 *&m
 						reg = r.registers[m[Rd3_0]] = r.loReg[Rs3_3];
 
 						if (Rd3_0 == HiReg::pc)
-							goto branchThumb;
+							goto branch;
 
 						goto fetch;
 
@@ -610,7 +668,7 @@ __INLINE__ void stepThumb(arm::Registers &r, arm::Memory32 &memory, const u8 *&m
 						reg = r.registers[m[Rd3_0]] = r.registers[m[Rs3_3]];
 
 						if (Rd3_0 == HiReg::pc)
-							goto branchThumb;
+							goto branch;
 
 						goto fetch;
 
@@ -618,27 +676,14 @@ __INLINE__ void stepThumb(arm::Registers &r, arm::Memory32 &memory, const u8 *&m
 					//1 cycle + 2 cycle prefetch = 3 cycles
 
 					case BX_LO:
-
 						printOp1(BX, Rs3_3);
-						r.pc = r.loReg[Rs3_3] & ~1;
-
-						if (r.loReg[Rs3_3] & 1)
-							goto branchThumb;
-
-						r.cpsr.value &= ~arm::PSR::tMask;
-						goto branchArm;
+						r.pc = r.loReg[Rs3_3];
+						goto branchExchange;
 
 					case BX_HI:
-
 						printOp1(BX, Rs3_3 | 8);
-						r.pc = r.registers[m[Rs3_3]] & ~1;
-
-						if (r.loReg[Rs3_3] & 1)
-							goto branchThumb;
-
-						r.cpsr.value &= ~arm::PSR::tMask;
-						goto branchArm;
-
+						r.pc = r.registers[m[Rs3_3]];
+						goto branchExchange;
 
 			}
 
@@ -653,22 +698,26 @@ __INLINE__ void stepThumb(arm::Registers &r, arm::Memory32 &memory, const u8 *&m
 				case ADD_TO_SP:
 					printOp1i(ADD, u32(arm::sp), i7_0 << 2);
 					r.registers[m[HiReg::sp]] += i7_0 << 2;
-					break;
+					goto fetch;
 
 				case SUB_TO_SP:
 					printOp1i(ADD, u32(arm::sp), -i32(i7_0 << 2));
 					r.registers[m[HiReg::sp]] -= i7_0 << 2;
-					break;
+					goto fetch;
 
 				//Push and pop instructions
 				//Assuming r0 is located closest to the top and lr is located furthest from the top
 
 				case PUSH_LR:
 
-					Stack::push(memory, r.registers[m[HiReg::sp]], r.registers[m[HiReg::lr]]);
+					//TODO: Opcode
+
+					Stack::push(memory, r.registers[m[HiReg::sp]], r.registers[m[HiReg::lr]] | 1);
 					++cycles;
 
 				case PUSH:
+
+					//TODO: Opcode
 
 					for(usz i = 0; i < 8; ++i)
 						if (r.ir & (0x80 >> i)) {
@@ -676,12 +725,17 @@ __INLINE__ void stepThumb(arm::Registers &r, arm::Memory32 &memory, const u8 *&m
 							++cycles;
 						}
 
-					break;
+					goto fetch;
 
 				case POP_PC:
+
+					//TODO: Opcode
+
 					++cycles;
 
 				case POP:
+
+					//TODO: Opcode
 
 					for (usz i = 0; i < 8; ++i)
 						if (r.ir & (1 << i)) {
@@ -689,31 +743,59 @@ __INLINE__ void stepThumb(arm::Registers &r, arm::Memory32 &memory, const u8 *&m
 							++cycles;
 						}
 
-					if (r.ir & 0x100)
-						Stack::pop(memory, r.registers[m[HiReg::sp]], r.registers[m[HiReg::pc]]);
+					if (r.ir & 0x100) {
+						Stack::pop(memory, r.registers[m[HiReg::sp]], r.pc);
+						goto branch;
+					}
 
-					break;
+					goto fetch;
+
+				case BKPT:
+
+					if constexpr ((v & 0xFF) >= arm::Armulator::VersionSpec::v5) {
+						printOpi(BKPT, r.ir & 0xFF);
+						r.exception<arm::Exception::PREFETCH_ABORT>();
+						goto branchArm;
+					}
 
 			}
-			
-			goto fetch;
-
-		//TODO: LDMIA takes 2 + n cycles
-		//TODO: STMIA takes 1 + n cycles
-
-		//TODO: ARM9:
-		//TODO: BKPT (Software breakpoint) NOP
-		//TODO: BLX (Link branch exchange) just checks bit 0 of register
-		//TODO: PLD (Prepare cache for memory load)
-		//TODO: STRD/LDRD (64-bit; two registers)
-		//TODO: V5 flag; ignores extra instructions if not set. Bit 0 of POP, LD/LDM should set thumb if set.
-		//TODO: Coprocessor and ABORT_BU
 
 		default:
-			throw std::exception();
-			return;
+			goto undef;
+
+		//TODO: Aborts; prefetch and data abort
+		//TODO: USR mode should enable bios protection, otherwise disable it
 
 	}
+
+undef:
+
+	r.exception<arm::Exception::UND>();
+
+	#ifdef __USE_EXIT__
+		return;
+	#else
+		goto branchArm;
+	#endif
+
+//Called after every branch instruction that doesn't require exchange
+branch:
+
+	//<=ARM7 doesn't allow switching modes in non-exchange branches
+	if constexpr ((v & 0xFF) <= arm::Armulator::VersionSpec::v4) {
+		r.pc &= ~1;
+		goto branchThumb;
+	}
+
+//Used for BX instruction on ARM7 and always for register PC modifications >ARM9
+branchExchange:
+
+	if (r.pc & 1) {
+		r.pc &= ~1;
+		goto branchThumb;
+	}
+
+	r.cpsr.clearThumb();
 
 branchArm:
 
@@ -721,7 +803,7 @@ branchArm:
 	fetchNext<false>(r, memory);
 	fetchNext<false>(r, memory);
 	m -= 8;								//Thumb always uses the upper mappings through m[HiReg] not m[Register]
-	goto branch;
+	goto endBranch;
 
 branchThumb:
 
@@ -729,7 +811,7 @@ branchThumb:
 	fetchNext<true>(r, memory);
 	fetchNext<true>(r, memory);
 
-branch:
+endBranch:
 
 	//Requires at least 3 cycles (2 for fetch, 1 for pipeline)
 

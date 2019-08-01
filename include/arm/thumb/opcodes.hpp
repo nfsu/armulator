@@ -34,6 +34,7 @@ namespace arm::thumb {
 		LDMIA = 0b1'1001,
 		B0 = 0b1'1010, B1 = 0b1'1011,
 		B = 0b1'1100,
+		BLX = 0b1'1101,						//v5 and up
 		BLH = 0b1'1110, BLL = 0b1'1111
 
 	};
@@ -65,7 +66,8 @@ namespace arm::thumb {
 		PUSH = 0b1'0110'10'0,
 		PUSH_LR = 0b1'0110'10'1,
 		POP = 0b1'0111'10'0,
-		POP_PC = 0b1'0111'10'1
+		POP_PC = 0b1'0111'10'1,
+		BKPT = 0b1'0111'11'0				//v5 and up
 
 	};
 

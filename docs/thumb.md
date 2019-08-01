@@ -91,8 +91,8 @@ The following notation is used for instructions;
 | 1 0111 101     | POP { Rs..., Rs..., PC }         | Pop the stack and put the values into the specified registers and PC. i is a bitflag for x << regId |          | -             |
 | 1 0111 110     | <u>undefined</u>                 |                                                              |          |               |
 | 1 0111 111     | <u>undefined</u>                 |                                                              |          |               |
-| 1 1000         | STMIA Rb!, { Rs..., Rs... }      | **TODO:**                                                    | RegOp8b  | -             |
-| 1 1001         | LDMIA Rb!,{ Rs..., Rs... }       | **TODO:**                                                    |          | -             |
+| 1 1000         | STMIA Rb!, { Rs..., Rs... }      | "Push" the specified registers onto the memory range specified and update the register. i is a bitflag for x << regId. | RegOp8b  | -             |
+| 1 1001         | LDMIA Rb!,{ Rs..., Rs... }       | "Pop" the specified registers onto the memory range specified and update the register. i is a bitflag for x << regId. |          | -             |
 | 1 1010, 1 1011 | B{cond} #8s                      | Increments PC by i << 1. cond = 1110 is undefined            | RegOp12b | -             |
 | 1 1011 111     | SWI #8                           | Causes a software interrupt. LR = next pc. CPSR into SPSR_SVC. SWI vector address 0x8 into the PC. Switch to arm mode, mode to SVC. SWI handler uses i to determine what the interrupt should do (depending on the system) |          | -             |
 | 1 1100         | B #11                            | Unconditional branch                                         | RegOp11b | -             |

@@ -5,12 +5,8 @@ using namespace arm;
 #include <intrin.h>
 #endif
 
-Armulator::Armulator(const List<Memory32::Range> &ranges, u32 entry, Mode::E mode):
-	memory(ranges) {
-
-	r.cpsr.thumb(entry & 1);
-	r.cpsr.mode(mode);
-	r.pc = entry & ~1;
+Armulator::Armulator(const List<Memory32::Range> &ranges): memory(ranges) {
+	r.cpsr.value = 0xD3;		//Initialize cpsr; no FIQ, no IRQ, SVC mode on ARM
 }
 
 void Armulator::print(Registers &r) {
@@ -70,9 +66,9 @@ __INLINE__ void wait(Registers &r, Memory32 &memory) {
 	//High register mappings
 
 	u8 mid = Mode::toId(r.cpsr.mode());
-	const u8 *hirMap =
-		Registers::mapping[mid]; /* Optimization for thumb; only fetch from reg if hi register is mentioned*/
 
+	/* Optimization for thumb; only fetch from reg if hi register is mentioned*/
+	const u8 *hirMap = Registers::mapping[mid]; 
 
 	//Populate instructions
 
@@ -101,7 +97,7 @@ __INLINE__ void wait(Registers &r, Memory32 &memory) {
 	while (true) {
 
 		#ifdef __USE_EXIT__
-			if (r.ir == 0xC0DE) {
+			if (r.pc == 0x4) {
 
 				#ifdef __USE_TIMER__
 				

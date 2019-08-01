@@ -4,7 +4,7 @@
 
 namespace arm {
 
-	//#define __ALLOW_DEBUG__
+	#define __ALLOW_DEBUG__
 	#define __USE_TIMER__
 	//#define __USE_CYCLE_TIMER__
 	#define __USE_EXIT__
@@ -49,7 +49,7 @@ namespace arm {
 		//					Add 1 to the address if thumb mode is enabled.
 		//@param[in] mode; in what mode the emulator is launched (default = user)
 
-		Armulator(const List<Memory32::Range> &ranges, u32 entry, Mode::E mode = Mode::USR);
+		Armulator(const List<Memory32::Range> &ranges);
 		~Armulator() = default;
 
 		Armulator(const Armulator&) = delete;

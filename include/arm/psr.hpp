@@ -21,8 +21,8 @@ namespace arm {
 
 		//Getters (1i,1j)
 
-		__forceinline Mode::E mode() const { return Mode::E(value & mMask); }		//Execution mode
-		__forceinline bool thumb() const { return value & tMask; }					//T; if thumb mode is used
+		__forceinline Mode::E mode() const { return Mode::E(value & mMask); }	//Execution mode
+		__forceinline bool thumb() const { return value & tMask; }				//T; if thumb mode is used
 		__forceinline bool disableFIQ() const { return value & fMask; }			//F: if FIQs aren't allowed
 		__forceinline bool disableIRQ() const { return value & iMask; }			//I: if IRQs aren't allowed
 
@@ -38,7 +38,6 @@ namespace arm {
 		//N: the last operation was negative
 		__forceinline bool negative() const { return value & nMask; }
 
-
 		//Bool setters (2-3i, 1j)
 
 		//beq 2					; Skip two instructions (to clear bit)
@@ -50,8 +49,16 @@ namespace arm {
 		//andeq rx, notMask
 
 		__forceinline void thumb(bool b) { b ? value |= tMask : value &= ~tMask; }
+		__forceinline void clearThumb() { value &= ~tMask; }
+		__forceinline void setThumb() { value |= tMask; }
+
 		__forceinline void irq(bool b) { b ? value |= iMask : value &= ~iMask; }
+		__forceinline void clearIrq() { value &= ~iMask; }
+		__forceinline void setIrq() { value |= iMask; }
+
 		__forceinline void fiq(bool b) { b ? value |= fMask : value &= ~fMask; }
+		__forceinline void clearFiq() { value &= ~fMask; }
+		__forceinline void setFiq() { value |= fMask; }
 
 		__forceinline void overflow(bool b) { b ? value |= vMask : value &= ~vMask; }
 		__forceinline void carry(bool b) { b ? value |= cMask : value &= ~cMask; }
