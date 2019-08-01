@@ -58,19 +58,6 @@ namespace arm::thumb {
 
 	};
 
-	//First 9-bits of an opcode
-	enum OpCode9 : u8 {
-
-		ADD_TO_SP = 0b1'0110'00'0,
-		SUB_TO_SP = 0b1'0110'00'1,
-		PUSH = 0b1'0110'10'0,
-		PUSH_LR = 0b1'0110'10'1,
-		POP = 0b1'0111'10'0,
-		POP_PC = 0b1'0111'10'1,
-		BKPT = 0b1'0111'11'0				//v5 and up
-
-	};
-
 	//First 8-bits of an opcode
 	enum OpCode8 : u8 {
 
@@ -90,7 +77,13 @@ namespace arm::thumb {
 		BLE,
 		BAL,
 
-		SWI
+		SWI,
+
+		PUSH = 0b1'011'0100,
+		PUSH_LR = 0b1'011'0101,
+		POP = 0b1'011'1100,
+		POP_PC = 0b1'011'1101,
+		BKPT = 0b1'011'1110				//v5 and up
 
 
 	};

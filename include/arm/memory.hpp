@@ -10,8 +10,8 @@
 #include <sys/mman.h>
 #endif
 
-#define __INLINE__
-//#define __INLINE__  __forceinline
+//#define __INLINE__
+#define __INLINE__  __forceinline
 
 namespace arm {
 

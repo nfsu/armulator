@@ -66,7 +66,7 @@ namespace arm::thumb {
 
 	//Reg0p7b
 
-	static inline TI addToSp(Value7 offset, bool negative){ return RegOp7b{ TI(offset), negative, ADD_TO_SP }.v; }
+	static inline TI addToSp(Value7 offset, bool negative){ return RegOp7b{ TI(offset), negative, INCR_SP }.v; }
 
 	static inline TI push(const oic::Bitset8<7> &Rs) { return RegOp7b{ Rs.at(0), false, PUSH }.v; }
 	static inline TI pop(const oic::Bitset8<7> &Rs) { return RegOp7b{ Rs.at(0), false, POP }.v; }
@@ -105,5 +105,7 @@ namespace arm::thumb {
 
 	//Nop instruction
 	static inline TI nop() { return mov(r8, r8); }
+
+	static inline TI bkpt(u8 code) { return TI((BKPT << 8) | code); }
 
 }

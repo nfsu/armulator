@@ -202,6 +202,16 @@ __INLINE__ void stepThumb(arm::Registers &r, arm::Memory32 &memory, const u8 *&m
 			r.loReg[Rd3_8] = r.registers[m[HiReg::sp]] + (i8_0 << 2);
 			goto fetch;
 
+		case INCR_SP:
+
+			reg = i7_0 << 2;
+
+			if (r.ir & 0x80)
+				reg = -i32(reg);
+
+			printOp1i(ADD, u32(arm::sp), i32(reg));
+			r.registers[m[HiReg::sp]] = reg;
+			goto fetch;
 
 		//Load/store multiple
 		//LDMIA takes 2 + n cycles
@@ -252,6 +262,7 @@ __INLINE__ void stepThumb(arm::Registers &r, arm::Memory32 &memory, const u8 *&m
 
 		case B0:
 		case B1:
+		case PUSH_POP:
 
 			switch (Op8_8) {
 
@@ -391,6 +402,60 @@ __INLINE__ void stepThumb(arm::Registers &r, arm::Memory32 &memory, const u8 *&m
 					printOpi(SWI, u32(i8_0));
 					r.exception<arm::Exception::SWI>();
 					goto branchArm;
+
+				//Push and pop instructions
+				//Assuming r0 is located closest to the top and lr is located furthest from the top
+				case PUSH_LR:
+
+					//TODO: Opcode
+
+					Stack::push(memory, r.registers[m[HiReg::sp]], r.registers[m[HiReg::lr]] | 1);
+					++cycles;
+
+				case PUSH:
+
+					//TODO: Opcode
+
+					for (usz i = 0; i < 8; ++i)
+						if (r.ir & (0x80 >> i)) {
+							Stack::push(memory, r.registers[m[HiReg::sp]], r.loReg[7 - i]);
+							++cycles;
+						}
+
+					goto fetch;
+
+				case POP_PC:
+
+					//TODO: Opcode
+
+					++cycles;
+
+				case POP:
+
+					//TODO: Opcode
+
+					for (usz i = 0; i < 8; ++i)
+						if (r.ir & (1 << i)) {
+							Stack::pop(memory, r.registers[m[HiReg::sp]], r.loReg[i]);
+							++cycles;
+						}
+
+					if (r.ir & 0x100) {
+						Stack::pop(memory, r.registers[m[HiReg::sp]], r.pc);
+						goto branch;
+					}
+
+					goto fetch;
+
+				case BKPT:
+
+					if constexpr ((v & 0xFF) >= arm::Armulator::VersionSpec::v5) {
+						printOpi(BKPT, r.ir & 0xFF);
+						r.exception<arm::Exception::PREFETCH_ABORT>();
+						goto branchArm;
+					}
+					else
+						goto undef;
 			}
 
 			r.pc += u32(i8(i8_0)) << 1;
@@ -684,79 +749,6 @@ __INLINE__ void stepThumb(arm::Registers &r, arm::Memory32 &memory, const u8 *&m
 						printOp1(BX, Rs3_3 | 8);
 						r.pc = r.registers[m[Rs3_3]];
 						goto branchExchange;
-
-			}
-
-		//Layout:
-		//i7_0, Op9_7
-
-		case INCR_SP:
-		case PUSH_POP:
-
-			switch (Op9_7) {
-
-				case ADD_TO_SP:
-					printOp1i(ADD, u32(arm::sp), i7_0 << 2);
-					r.registers[m[HiReg::sp]] += i7_0 << 2;
-					goto fetch;
-
-				case SUB_TO_SP:
-					printOp1i(ADD, u32(arm::sp), -i32(i7_0 << 2));
-					r.registers[m[HiReg::sp]] -= i7_0 << 2;
-					goto fetch;
-
-				//Push and pop instructions
-				//Assuming r0 is located closest to the top and lr is located furthest from the top
-
-				case PUSH_LR:
-
-					//TODO: Opcode
-
-					Stack::push(memory, r.registers[m[HiReg::sp]], r.registers[m[HiReg::lr]] | 1);
-					++cycles;
-
-				case PUSH:
-
-					//TODO: Opcode
-
-					for(usz i = 0; i < 8; ++i)
-						if (r.ir & (0x80 >> i)) {
-							Stack::push(memory, r.registers[m[HiReg::sp]], r.loReg[7 - i]);
-							++cycles;
-						}
-
-					goto fetch;
-
-				case POP_PC:
-
-					//TODO: Opcode
-
-					++cycles;
-
-				case POP:
-
-					//TODO: Opcode
-
-					for (usz i = 0; i < 8; ++i)
-						if (r.ir & (1 << i)) {
-							Stack::pop(memory, r.registers[m[HiReg::sp]], r.loReg[i]);
-							++cycles;
-						}
-
-					if (r.ir & 0x100) {
-						Stack::pop(memory, r.registers[m[HiReg::sp]], r.pc);
-						goto branch;
-					}
-
-					goto fetch;
-
-				case BKPT:
-
-					if constexpr ((v & 0xFF) >= arm::Armulator::VersionSpec::v5) {
-						printOpi(BKPT, r.ir & 0xFF);
-						r.exception<arm::Exception::PREFETCH_ABORT>();
-						goto branchArm;
-					}
 
 			}
 

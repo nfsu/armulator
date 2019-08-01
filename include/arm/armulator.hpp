@@ -4,7 +4,7 @@
 
 namespace arm {
 
-	#define __ALLOW_DEBUG__
+	//#define __ALLOW_DEBUG__
 	#define __USE_TIMER__
 	//#define __USE_CYCLE_TIMER__
 	#define __USE_EXIT__
