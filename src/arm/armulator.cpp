@@ -1,10 +1,6 @@
 #include "arm/armulator.hpp"
 using namespace arm;
 
-#if _WIN32
-#include <intrin.h>
-#endif
-
 Armulator::Armulator(const List<Memory32::Range> &ranges): memory(ranges) {
 	r.cpsr.value = 0xD3;		//Initialize cpsr; no FIQ, no IRQ, SVC mode on ARM
 }
