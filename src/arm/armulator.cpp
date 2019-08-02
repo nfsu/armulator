@@ -56,11 +56,10 @@ __INLINE__ void step(Registers &r, Memory32 &memory, const u8 *&hirMap, u64 &cyc
 
 }
 
-template<Armulator::Version v>
+template<Armulator::Version v, Armulator::DebugType type>
 __INLINE__ void wait(Registers &r, Memory32 &memory) {
 
 	//High register mappings
-
 	u8 mid = Mode::toId(r.cpsr.mode());
 
 	/* Optimization for thumb; only fetch from reg if hi register is mentioned*/
@@ -78,43 +77,54 @@ __INLINE__ void wait(Registers &r, Memory32 &memory) {
 	}
 
 	//Run instructions
-
-	u64 cycles{}, instruction{};
-	u64 timer;
 	
-	#ifdef __USE_CYCLE_TIMER__
-		u64 timings[128]{}, instruction{}, timing;
-	#endif
+	u64 timings[128]{}, timing, instruction{};
+	u64 timer;
 
-	#ifdef __USE_TIMER__
+	if constexpr ((type & Armulator::USE_CYCLE) == 0) {
+		timings;
+		timing;
+	}
+
+	if constexpr ((type & Armulator::USE_TIMER) == 0) {
+		timer;
+		instruction;
+	}
+
+	u64 cycles{};
+
+	if constexpr((type & Armulator::USE_TIMER) != 0)
 		timer = std::chrono::high_resolution_clock::now().time_since_epoch().count();
-	#endif
 
 	while (true) {
 
 		#ifdef __USE_EXIT__
 			if (r.pc == 0x4) {
 
-				#ifdef __USE_TIMER__
+				if constexpr ((type & Armulator::USE_TIMER) != 0){
 				
 					timer = std::chrono::high_resolution_clock::now().time_since_epoch().count() - timer;
 
-					#ifdef __USE_CYCLE_TIMER__
+					if constexpr((type & Armulator::USE_CYCLE) != 0)
 						for(usz i = 0; i < instruction; ++i)
 							printf("%zu %llu\n", i, timings[i]);
-					#endif
 
-					printf("%llu cycles (%llu instructions): %lluns (%fns/c, %fns/i)\n", cycles, instruction, timer, f64(timer) / cycles, f64(timer) / instruction);
+					printf("%llu cycles (%llu instructions): %lluns (%fns/c, %fns/i)\n",
+						   cycles, instruction, timer, f64(timer) / cycles, f64(timer) / instruction);
 
-				#endif
+				}
 
 				throw std::exception();
 			}
 		#endif
-		
-		#ifdef __USE_CYCLE_TIMER__
+
+			if constexpr ((type & Armulator::PRINT_INSTRUCTION) != 0 && (v & Armulator::VersionSpec::T) != 0) {
+				if (r.cpsr.thumb())
+					printThumb<v>(r);
+			}
+
+		if constexpr ((type & Armulator::USE_CYCLE) != 0)
 			timing = __rdtsc();
-		#endif
 
 		if constexpr((v & Armulator::VersionSpec::T) != 0) {
 
@@ -126,21 +136,31 @@ __INLINE__ void wait(Registers &r, Memory32 &memory) {
 		} else
 			step<false, v>(r, memory, hirMap, cycles);
 
-		#ifdef __USE_CYCLE_TIMER__
+		if constexpr ((type & Armulator::USE_CYCLE) != 0)
 			timings[instruction] = __rdtsc() - timing;
-		#endif
 			
-		#ifdef __USE_TIMER__
+		if constexpr ((type & Armulator::USE_TIMER) != 0)
 			++instruction;
-		#endif
 	}
 }
 
-void Armulator::wait(Armulator::Version v) {
+//Expand template function with switch table
+//Avoiding having to include everything in the headers
 
-	if (v == Armulator::ARM7TDMI)
-		::wait<Armulator::ARM7TDMI>(r, memory);
-	else
-		::wait<Armulator::ARM9TDMI>(r, memory);
+#define _Type(x, y) case y: ::wait<x, DebugType(y)>(r, memory); break;
+#define _Type2(x, y) _Type(x, y) _Type(x, y + 1)
+#define _Version(x) switch(u32(debug)) { _Type2(x, 0) _Type2(x, 2) _Type2(x, 4) _Type2(x, 6) } break;
+
+void Armulator::wait(Armulator::Version v, DebugType debug) {
+
+	switch (v) {
+
+		case Armulator::ARM7TDMI:
+			_Version(ARM7TDMI);
+
+		case Armulator::ARM9TDMI:
+			_Version(ARM9TDMI);
+
+	}
 
 }

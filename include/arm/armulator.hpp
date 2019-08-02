@@ -4,9 +4,6 @@
 
 namespace arm {
 
-	//#define __ALLOW_DEBUG__
-	#define __USE_TIMER__
-	//#define __USE_CYCLE_TIMER__
 	#define __USE_EXIT__
 
 	//!ARM7 emulator
@@ -40,6 +37,14 @@ namespace arm {
 			ARM9TDMI = VersionSpec::v5 | VersionSpec::TDMI,
 		};
 
+		enum DebugType {
+			NONE = 0,				//Disable debugging
+			PRINT_INSTRUCTION = 1,	//Print the instruction to the console
+			USE_TIMER = 2,			//Time the total execution in ns (timestep normally ~100ns)
+			USE_CYCLE = 4			//Time every instruction through CPU cycles
+									//(adds a lot of performance impact; only works for 128 instructions) 
+		};
+
 		//Create the armulator to run the specified rom
 		//@param[in] ranges; the memory ranges the armulator should map and use
 		//@param[in] debug; how to handle printing each step of code
@@ -57,7 +62,7 @@ namespace arm {
 		Armulator &operator=(const Armulator&) = delete;
 		Armulator &operator=(Armulator&&) = delete;
 
-		void wait(Version v);	//Performs operations until there are none left
+		void wait(Version v, DebugType debug);	//Performs operations until there are none left
 
 		static void print(Registers &r);			//Print all registers
 		static void printPSR(PSR psr);				//Print the PSR
