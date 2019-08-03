@@ -100,7 +100,7 @@ namespace arm::thumb {
 
 	//RegOp12b
 
-	static inline TI b(Condition cond, i16 i /* 9-bit */) { return RegOp12b{ u8(i8(i / 2)), cond, B0 >> 1 }.v; }
+	static inline TI b(arm::cond::Condition cond, i16 i /* 9-bit */) { return RegOp12b{ u8(i8(i / 2)), cond, B0 >> 1 }.v; }
 	static inline TI swi(u8 op) { return RegOp12b{ op, 0b1111, B0 >> 1 }.v; }
 
 	//Nop instruction

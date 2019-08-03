@@ -161,7 +161,7 @@ namespace arm::thumb {
 	//Print instruction set
 
 	template<arm::Armulator::Version v>
-	__INLINE__ bool printThumb(arm::Registers &r) {
+	_inline_ bool printThumb(arm::Registers &r) {
 
 		std::stringstream ss;
 
@@ -198,7 +198,7 @@ namespace arm::thumb {
 				return print(ss, names5[Op5_11], Rd3_8, arm::pc, i8_0_2);
 
 			case INCR_SP:
-				return print(ss, names5[Op5_11], arm::sp, r.ir & 0x80 ? i7_0_2 : -i32(i7_0_2));
+				return print(ss, names5[Op5_11], arm::sp, r.ir & 0x80 ? -i32(i7_0_2) : i7_0_2);
 
 			case STMIA:
 			case LDMIA:

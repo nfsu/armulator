@@ -1,7 +1,7 @@
 #pragma once
 #include "types/types.hpp"
 
-namespace arm::thumb {
+namespace arm::cond {
 
 	enum Condition : u8 /* 4-bit */ {
 

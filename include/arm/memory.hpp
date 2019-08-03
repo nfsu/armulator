@@ -3,15 +3,14 @@
 #include "system/system.hpp"
 #include "system/log.hpp"
 #include "utils/math.hpp"
+#define _inline_  __forceinline
+//#define _inline_ 
 
 #ifdef _WIN32
 #include <Windows.h>
 #else
 #include <sys/mman.h>
 #endif
-
-//#define __INLINE__
-#define __INLINE__  __forceinline
 
 namespace arm {
 
@@ -47,7 +46,6 @@ namespace arm {
 		static void allocate();
 		static void allocate(Range &r);
 		static void free();
-		static void free(Range &r);
 
 		static void initMemory(Range &r, void *ou) {
 
@@ -76,23 +74,18 @@ namespace arm {
 		}
 
 		~Memory() {
-
 			free();
-
-			for (Range &range : ranges)
-				if(range.size)
-					free(range);
 		}
 
 		//Gets the variable from the address (read)
 		template<typename T>
-		__INLINE__ const T &get(AddressType ptr) const {
+		_inline_ const T &get(AddressType ptr) const {
 			return *(T*)(mapping | ptr);
 		}
 
 		//Sets the variable at the address (write)
 		template<typename T>
-		__INLINE__ T &set(AddressType ptr, const T &t) {
+		_inline_ T &set(AddressType ptr, const T &t) {
 			return *(T*)(mapping | ptr) = t;
 		}
 
@@ -139,13 +132,8 @@ namespace arm {
 		}
 
 		template<typename AddressType, typename T>
-		void Memory<AddressType, T>::free(Range &r) {
-			VirtualFree(LPVOID(mapping | r.start), 0, MEM_DECOMMIT);
-		}
-
-		template<typename AddressType, typename T>
 		void Memory<AddressType, T>::free() {
-			VirtualFree(LPVOID(mapping), mapping, MEM_RELEASE);
+			VirtualFree(LPVOID(mapping), 0, MEM_RELEASE);
 		}
 
 	#else
@@ -169,11 +157,6 @@ namespace arm {
 
 			if (!r.write && mprotect((void*)map, usz(r.size), PROT_READ))
 				oic::System::log()->fatal("Couldn't protect memory");
-		}
-
-		template<typename AddressType, typename T>
-		void Memory<AddressType, T>::allocate(Range &r) {
-			munmap((void*)(mapping | r.start), mapping);
 		}
 
 		template<typename AddressType, typename T>

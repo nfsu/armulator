@@ -4,8 +4,6 @@
 
 namespace arm {
 
-	#define __USE_EXIT__
-
 	//!ARM7 emulator
 	//The armulator **RUNS IN THIS PROCESS** giving it access to memory allocated here as well
 	//But only if it's allocated at 0xF0000000 -> 0xFFFFFFFF
@@ -40,9 +38,7 @@ namespace arm {
 		enum DebugType {
 			NONE = 0,				//Disable debugging
 			PRINT_INSTRUCTION = 1,	//Print the instruction to the console
-			USE_TIMER = 2,			//Time the total execution in ns (timestep normally ~100ns)
-			USE_CYCLE = 4			//Time every instruction through CPU cycles
-									//(adds a lot of performance impact; only works for 128 instructions) 
+			PRINT_REGISTERS = 2		//Output the registers to the console
 		};
 
 		//Create the armulator to run the specified rom
@@ -61,8 +57,6 @@ namespace arm {
 		Armulator(Armulator&&) = delete;
 		Armulator &operator=(const Armulator&) = delete;
 		Armulator &operator=(Armulator&&) = delete;
-
-		void wait(Version v, DebugType debug);	//Performs operations until there are none left
 
 		static void print(Registers &r);			//Print all registers
 		static void printPSR(PSR psr);				//Print the PSR
