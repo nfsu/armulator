@@ -11,10 +11,11 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
 set(CMAKE_SUPPRESS_REGENERATION true)
 
-add_subdirectory(core2)
+add_subdirectory(emu)
 
 include_directories(include)
-include_directories(core2/include)
+include_directories(emu/core2/include)
+include_directories(emu/include)
 
 file(GLOB_RECURSE armulatorSrc
 	"include/*.hpp"
@@ -26,7 +27,7 @@ add_library(
 	${armulatorSrc}
 )
 
-target_link_libraries(armulator ocore)
+target_link_libraries(armulator emu ocore)
 
 if(MSVC)
     target_compile_options(armulator PRIVATE /W4 /WX /MD /MP /wd4201 /Ob2)

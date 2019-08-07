@@ -1,3 +1,3 @@
-[submodule "core2"]
-	path = core2
-	url = https://github.com/Nielsbishere/core2
+[submodule "emu"]
+	path = emu
+	url = https://github.com/nfsu/emu
