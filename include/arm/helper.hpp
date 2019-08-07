@@ -7,8 +7,8 @@ namespace arm {
 	//Incrementing multiple data instruction
 	//bool st; whether it stores or loads
 	//miaPos<false> = POP, miaPos<true> = STMIA
-	template<typename AddressType, bool st, usz regs = 8>
-	_inline_ void miaPos(emu::Memory<AddressType> &mem, usz &cycles, AddressType &ptr, Registers &r) {
+	template<typename AddressType, bool st, usz regs = 8, typename Memory>
+	_inline_ void miaPos(Memory &mem, usz &cycles, AddressType &ptr, Registers &r) {
 
 		for (usz i = 0; i < regs; ++i)
 			if (r.ir & (1 << i)) {
@@ -26,8 +26,8 @@ namespace arm {
 	//Decrementing multiple data instruction
 	//bool st; whether it stores or loads
 	//miaNeg<false> = LDMIA, miaNeg<true> = PUSH
-	template<typename AddressType, bool st, usz regs = 8>
-	_inline_ void miaNeg(emu::Memory<AddressType> &mem, usz &cycles, AddressType &ptr, Registers &r) {
+	template<typename AddressType, bool st, usz regs = 8, typename Memory>
+	_inline_ void miaNeg(Memory &mem, usz &cycles, AddressType &ptr, Registers &r) {
 		for (usz i = 0; i < regs; ++i)
 			if (r.ir & (0x80 >> i)) {
 
@@ -43,8 +43,8 @@ namespace arm {
 	
 	//Fill next instruction pipeline
 
-	template<bool isThumb>
-	_inline_ void fetchNext(Registers &r, emu::Memory32 &memory) {
+	template<bool isThumb, typename Memory>
+	_inline_ void fetchNext(Registers &r, Memory &memory) {
 
 		r.ir = r.nir;
 
@@ -60,8 +60,8 @@ namespace arm {
 	//Branch which can change the thumb flag or just continue the current mode
 	//Prefetches next instructions
 
-	template<bool thumb, bool exchange, bool forceArm = false>
-	_inline_ void branch(Registers &r, emu::Memory32 &mem, usz &cycles, const u8 *&mapping) {
+	template<bool thumb, bool exchange, bool forceArm = false, typename Memory>
+	_inline_ void branch(Registers &r, Memory &mem, usz &cycles, const u8 *&mapping) {
 
 		cycles += 2;
 
@@ -98,8 +98,8 @@ namespace arm {
 	}
 
 	//Trigger exception and prefetch
-	template<bool thumb, Exception e>
-	_inline_ void exception(Registers &r, emu::Memory32 &mem, usz &cycles, const u8 *&mapping) {
+	template<bool thumb, Exception e, typename Memory>
+	_inline_ void exception(Registers &r, Memory &mem, usz &cycles, const u8 *&mapping) {
 		r.exception<e>();
 		branch<thumb, true, true>(r, mem, cycles, mapping);
 	}

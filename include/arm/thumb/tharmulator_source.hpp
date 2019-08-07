@@ -15,9 +15,9 @@ namespace arm::thumb {
 	template<
 		arm::Armulator::Version v, bool ascendingStack = false, bool emptyStack = false
 	>
-	_inline_ void stepThumb(arm::Registers &r, emu::Memory32 &memory, const u8 *&m, usz &cycles) {
+	_inline_ void stepThumb(arm::Registers &r, arm::Armulator::Memory &memory, const u8 *&m, usz &cycles) {
 
-		using Stack = emu::Stack32<ascendingStack, emptyStack>;
+		using Stack = arm::Armulator::Stack;
 
 		switch (Op5_11 /* fetch first 5 bits of opcode */) {
 

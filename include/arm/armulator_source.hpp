@@ -5,7 +5,7 @@
 
 namespace arm {
 
-	Armulator::Armulator(const List<emu::Memory32::Range> &ranges): memory(ranges) {
+	Armulator::Armulator(const List<Memory::Range> &ranges): memory(ranges) {
 		r.cpsr.value = 0xD3;		//Initialize cpsr; no FIQ, no IRQ, SVC mode on ARM
 	}
 
@@ -38,7 +38,7 @@ namespace arm {
 	}
 
 	template<bool isThumb, Armulator::Version v>
-	_inline_ void step(Registers &r, emu::Memory32 &memory, const u8 *&hirMap, u64 &cycles) {
+	_inline_ void step(Registers &r, arm::Armulator::Memory &memory, const u8 *&hirMap, u64 &cycles) {
 
 		//Perform code cached in ir/nir registers
 
@@ -52,7 +52,7 @@ namespace arm {
 	}
 
 	template<Armulator::Version v, Armulator::DebugType type>
-	_inline_ void wait(Registers &r, emu::Memory32 &memory) {
+	_inline_ void wait(Registers &r, arm::Armulator::Memory &memory) {
 
 		//High register mappings
 		u8 mid = Mode::toId(r.cpsr.mode());

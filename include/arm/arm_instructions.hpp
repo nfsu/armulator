@@ -24,7 +24,7 @@ namespace arm {
 	}*/
 
 	template<Armulator::Version v>
-	_inline_ void stepArm(Registers &r, emu::Memory32 &, const u8 *&, usz &) {
+	_inline_ void stepArm(Registers &r, arm::Armulator::Memory &, const u8 *&, usz &) {
 
 		//Conditional 
 		if (!arm::doCondition(arm::cond::Condition(Cond4_28), r.cpsr))

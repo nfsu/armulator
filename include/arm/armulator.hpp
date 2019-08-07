@@ -1,6 +1,7 @@
 #pragma once
 #include "registers.hpp"
 #include "emu/memory.hpp"
+#include "emu/stack.hpp"
 
 namespace arm {
 
@@ -41,6 +42,9 @@ namespace arm {
 			PRINT_REGISTERS = 2		//Output the registers to the console
 		};
 
+		using Memory = emu::Memory32<0x80000000>;
+		using Stack = emu::Stack<Memory, u32>;
+
 		//Create the armulator to run the specified rom
 		//@param[in] ranges; the memory ranges the armulator should map and use
 		//@param[in] debug; how to handle printing each step of code
@@ -50,7 +54,7 @@ namespace arm {
 		//					Add 1 to the address if thumb mode is enabled.
 		//@param[in] mode; in what mode the emulator is launched (default = user)
 
-		Armulator(const List<emu::Memory32::Range> &ranges);
+		Armulator(const List<Memory::Range> &ranges);
 		~Armulator() = default;
 
 		Armulator(const Armulator&) = delete;
@@ -62,7 +66,7 @@ namespace arm {
 		static void printPSR(PSR psr);				//Print the PSR
 
 		Registers r;
-		emu::Memory32 memory;
+		Memory memory;
 
 	private:
 
