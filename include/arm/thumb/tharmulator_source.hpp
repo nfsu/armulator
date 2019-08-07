@@ -4,6 +4,7 @@
 #include "arm/helper.hpp"
 #include "arm/thumb/values.hpp"
 #include "arm/thumb/debug.hpp"
+#include "emu/stack.hpp"
 
 //Step through a thumb instruction
 //Where m is the mapping of high registers (type mapping + 8) so m[HiReg] matches the register id it should fetch from
@@ -14,9 +15,9 @@ namespace arm::thumb {
 	template<
 		arm::Armulator::Version v, bool ascendingStack = false, bool emptyStack = false
 	>
-	_inline_ void stepThumb(arm::Registers &r, arm::Memory32 &memory, const u8 *&m, u64 &cycles) {
+	_inline_ void stepThumb(arm::Registers &r, emu::Memory32 &memory, const u8 *&m, usz &cycles) {
 
-		using Stack = arm::Stack32<ascendingStack, emptyStack>;
+		using Stack = emu::Stack32<ascendingStack, emptyStack>;
 
 		switch (Op5_11 /* fetch first 5 bits of opcode */) {
 
@@ -25,15 +26,15 @@ namespace arm::thumb {
 			//Layout: Rd3_0, Rs3_3, i5_6, Op5_11
 
 			case LSL:		//Logical shift left
-				r.loReg[Rd3_0] = arm::lsl(r.cpsr, r.loReg[Rs3_3], i5_6);
+				r.loReg[Rd3_0] = emu::lsl(r.cpsr, r.loReg[Rs3_3], i5_6);
 				break;
 
 			case LSR:		//Logical shift right
-				r.loReg[Rd3_0] = arm::lsr(r.cpsr, r.loReg[Rs3_3], i5_6);
+				r.loReg[Rd3_0] = emu::lsr(r.cpsr, r.loReg[Rs3_3], i5_6);
 				break;
 
 			case ASR:		//Arithmetic shift right (maintain sign)
-				r.loReg[Rd3_0] = arm::asr(r.cpsr, r.loReg[Rs3_3], i5_6);
+				r.loReg[Rd3_0] = emu::asr(r.cpsr, r.loReg[Rs3_3], i5_6);
 				break;
 
 				//STR: 2N
@@ -41,63 +42,63 @@ namespace arm::thumb {
 
 			case STRi:		//Store u32 (with intermediate offset)
 				++cycles;
-				arm::str(memory, r.loReg[Rd3_0], r.loReg[Rs3_3], i5_6_2);
+				emu::str(memory, r.loReg[Rd3_0], r.loReg[Rs3_3], i5_6_2);
 				break;
 
 			case LDRi:		//Load u32 (with intermediate offset)
 				cycles += 2;
-				arm::ldr(memory, r.loReg[Rd3_0], r.loReg[Rs3_3], i5_6_2);
+				emu::ldr(memory, r.loReg[Rd3_0], r.loReg[Rs3_3], i5_6_2);
 				break;
 
 			case STRBi:		//Store u8 (with intermediate offset)
 				++cycles;
-				arm::strb(memory, r.loReg[Rd3_0], r.loReg[Rs3_3], i5_6);
+				emu::strb(memory, r.loReg[Rd3_0], r.loReg[Rs3_3], i5_6);
 				break;
 
 			case LDRBi:		//Store u8 (with intermediate offset)
 				cycles += 2;
-				arm::ldrb(memory, r.loReg[Rd3_0], r.loReg[Rs3_3], i5_6);
+				emu::ldrb(memory, r.loReg[Rd3_0], r.loReg[Rs3_3], i5_6);
 				break;
 
 			case STRHi:		//Store u16 (with intermediate offset)
 				++cycles;
-				arm::strh(memory, r.loReg[Rd3_0], r.loReg[Rs3_3], i5_6_1);
+				emu::strh(memory, r.loReg[Rd3_0], r.loReg[Rs3_3], i5_6_1);
 				break;
 
 			case LDRHi:		//Store u16 (with intermediate offset)
 				cycles += 2;
-				arm::ldrh(memory, r.loReg[Rd3_0], r.loReg[Rs3_3], i5_6_1);
+				emu::ldrh(memory, r.loReg[Rd3_0], r.loReg[Rs3_3], i5_6_1);
 				break;
 
 				//Layout:
 				//i8_0, Rd3_8, Op5_11
 
 			case MOV:
-				arm::mov(r.cpsr, r.loReg[Rd3_8], i8_0);
+				emu::mov(r.cpsr, r.loReg[Rd3_8], i8_0);
 				break;
 
 			case CMP:
-				arm::sub(r.cpsr, r.loReg[Rd3_8], i8_0);
+				emu::sub(r.cpsr, r.loReg[Rd3_8], i8_0);
 				break;
 
 			case ADD:
-				arm::addTo(r.cpsr, r.loReg[Rd3_8], i8_0);
+				emu::addTo(r.cpsr, r.loReg[Rd3_8], i8_0);
 				break;
 
 			case SUB:
-				arm::subFrom(r.cpsr, r.loReg[Rd3_8], i8_0);
+				emu::subFrom(r.cpsr, r.loReg[Rd3_8], i8_0);
 				break;
 
 			case STR_SP:
-				arm::str(memory, r.loReg[Rd3_8], r.registers[m[HiReg::sp]], i8_0_2);
+				emu::str(memory, r.loReg[Rd3_8], r.registers[m[HiReg::sp]], i8_0_2);
 				break;
 
 			case LDR_SP:
-				arm::ldr(memory, r.loReg[Rd3_8], r.registers[m[HiReg::sp]], i8_0_2);
+				emu::ldr(memory, r.loReg[Rd3_8], r.registers[m[HiReg::sp]], i8_0_2);
 				break;
 
 			case LDR_PC:
-				arm::ldr(memory, r.loReg[Rd3_8], r.pc >> 2 << 2, i8_0_2);
+				emu::ldr(memory, r.loReg[Rd3_8], r.pc & ~3, i8_0_2);
 				break;
 
 			case ADD_PC:
@@ -117,12 +118,12 @@ namespace arm::thumb {
 				//STMIA takes 1 + n cycles
 
 			case STMIA:
-				arm::miaPos<true>(memory, cycles, r.loReg[Rd3_8], r);
+				arm::miaPos<u32, true>(memory, cycles, r.loReg[Rd3_8], r);
 				break;
 
 			case LDMIA:
 				++cycles;
-				arm::miaNeg<false>(memory, cycles, r.loReg[Rd3_8], r);
+				arm::miaNeg<u32, false>(memory, cycles, r.loReg[Rd3_8], r);
 				break;
 
 				//Unconditional (thumb) branch
@@ -182,7 +183,7 @@ namespace arm::thumb {
 
 					case PUSH:
 
-						arm::miaNeg<true>(memory, cycles, r.loReg[Rd3_8], r);
+						arm::miaNeg<u32, true>(memory, cycles, r.loReg[Rd3_8], r);
 						break;
 
 					case POP_PC:
@@ -190,7 +191,7 @@ namespace arm::thumb {
 
 					case POP:
 
-						arm::miaPos<false>(memory, cycles, r.loReg[Rd3_8], r);
+						arm::miaPos<u32, false>(memory, cycles, r.loReg[Rd3_8], r);
 
 						if (r.ir & 0x100) {
 							Stack::pop(memory, r.registers[m[HiReg::sp]], r.pc);
@@ -253,51 +254,51 @@ namespace arm::thumb {
 				switch (Op7_9) {
 
 					case ADD_R:
-						r.loReg[Rd3_0] = arm::add(r.cpsr, r.loReg[Rs3_3], r.loReg[Rni3_6]);
+						r.loReg[Rd3_0] = emu::add(r.cpsr, r.loReg[Rs3_3], r.loReg[Rni3_6]);
 						break;
 
 					case SUB_R:
-						r.loReg[Rd3_0] = arm::sub(r.cpsr, r.loReg[Rs3_3], r.loReg[Rni3_6]);
+						r.loReg[Rd3_0] = emu::sub(r.cpsr, r.loReg[Rs3_3], r.loReg[Rni3_6]);
 						break;
 
 					case ADD_3B:
-						r.loReg[Rd3_0] = arm::add(r.cpsr, r.loReg[Rs3_3], Rni3_6);
+						r.loReg[Rd3_0] = emu::add(r.cpsr, r.loReg[Rs3_3], Rni3_6);
 						break;
 
 					case SUB_3B:
-						r.loReg[Rd3_0] = arm::sub(r.cpsr, r.loReg[Rs3_3], Rni3_6);
+						r.loReg[Rd3_0] = emu::sub(r.cpsr, r.loReg[Rs3_3], Rni3_6);
 						break;
 
 					case STR:
-						arm::str(memory, r.loReg[Rd3_0], r.loReg[Rs3_3], r.loReg[Rni3_6]);
+						emu::str(memory, r.loReg[Rd3_0], r.loReg[Rs3_3], r.loReg[Rni3_6]);
 						break;
 
 					case STRH:
-						arm::strh(memory, r.loReg[Rd3_0], r.loReg[Rs3_3], r.loReg[Rni3_6]);
+						emu::strh(memory, r.loReg[Rd3_0], r.loReg[Rs3_3], r.loReg[Rni3_6]);
 						break;
 
 					case STRB:
-						arm::strb(memory, r.loReg[Rd3_0], r.loReg[Rs3_3], r.loReg[Rni3_6]);
+						emu::strb(memory, r.loReg[Rd3_0], r.loReg[Rs3_3], r.loReg[Rni3_6]);
 						break;
 
 					case LDSB:
-						arm::ldsb(memory, r.loReg[Rd3_0], r.loReg[Rs3_3], r.loReg[Rni3_6]);
+						emu::ldsb(memory, r.loReg[Rd3_0], r.loReg[Rs3_3], r.loReg[Rni3_6]);
 						break;
 
 					case LDR:
-						arm::ldr(memory, r.loReg[Rd3_0], r.loReg[Rs3_3], r.loReg[Rni3_6]);
+						emu::ldr(memory, r.loReg[Rd3_0], r.loReg[Rs3_3], r.loReg[Rni3_6]);
 						break;
 
 					case LDRH:
-						arm::ldrh(memory, r.loReg[Rd3_0], r.loReg[Rs3_3], r.loReg[Rni3_6]);
+						emu::ldrh(memory, r.loReg[Rd3_0], r.loReg[Rs3_3], r.loReg[Rni3_6]);
 						break;
 
 					case LDRB:
-						arm::ldrb(memory, r.loReg[Rd3_0], r.loReg[Rs3_3], r.loReg[Rni3_6]);
+						emu::ldrb(memory, r.loReg[Rd3_0], r.loReg[Rs3_3], r.loReg[Rni3_6]);
 						break;
 
 					case LDSH:
-						arm::ldsh(memory, r.loReg[Rd3_0], r.loReg[Rs3_3], r.loReg[Rni3_6]);
+						emu::ldsh(memory, r.loReg[Rd3_0], r.loReg[Rs3_3], r.loReg[Rni3_6]);
 						break;
 
 					default:
@@ -314,59 +315,59 @@ namespace arm::thumb {
 				switch (Op10_6) {
 
 					case AND:
-						arm::andInto(r.cpsr, r.loReg[Rd3_0], r.loReg[Rs3_3]);
+						emu::andInto(r.cpsr, r.loReg[Rd3_0], r.loReg[Rs3_3]);
 						break;
 
 					case EOR:
-						arm::eorInto(r.cpsr, r.loReg[Rd3_0], r.loReg[Rs3_3]);
+						emu::eorInto(r.cpsr, r.loReg[Rd3_0], r.loReg[Rs3_3]);
 						break;
 
 					case LSL_R:
 						++cycles;
-						arm::lslInto(r.cpsr, r.loReg[Rd3_0], r.loReg[Rs3_3]);
+						emu::lslInto(r.cpsr, r.loReg[Rd3_0], r.loReg[Rs3_3]);
 						break;
 
 					case LSR_R:
 						++cycles;
-						arm::lsrInto(r.cpsr, r.loReg[Rd3_0], r.loReg[Rs3_3]);
+						emu::lsrInto(r.cpsr, r.loReg[Rd3_0], r.loReg[Rs3_3]);
 						break;
 
 					case ASR_R:
 						++cycles;
-						arm::asrInto(r.cpsr, r.loReg[Rd3_0], r.loReg[Rs3_3]);
+						emu::asrInto(r.cpsr, r.loReg[Rd3_0], r.loReg[Rs3_3]);
 						break;
 
 					case ADC:
-						arm::addTo(r.cpsr, r.loReg[Rd3_0], r.loReg[Rs3_3] + r.cpsr.carry());
+						emu::addTo(r.cpsr, r.loReg[Rd3_0], r.loReg[Rs3_3] + r.cpsr.carry());
 						break;
 
 					case SBC:
-						arm::subFrom(r.cpsr, r.loReg[Rd3_0], r.loReg[Rs3_3] + r.cpsr.carry());
+						emu::subFrom(r.cpsr, r.loReg[Rd3_0], r.loReg[Rs3_3] + r.cpsr.carry());
 						break;
 
 					case ROR:
-						arm::rorInto(r.cpsr, r.loReg[Rd3_0], r.loReg[Rs3_3]);
+						emu::rorInto(r.cpsr, r.loReg[Rd3_0], r.loReg[Rs3_3]);
 						++cycles;
 						break;
 
 					case TST:
-						arm::and(r.cpsr, r.loReg[Rd3_0], r.loReg[Rs3_3]);
+						emu::and(r.cpsr, r.loReg[Rd3_0], r.loReg[Rs3_3]);
 						break;
 
 					case NEG:
-						r.loReg[Rd3_0] = arm::sub(r.cpsr, 0, r.loReg[Rs3_3]);
+						r.loReg[Rd3_0] = emu::sub(r.cpsr, 0_u32, r.loReg[Rs3_3]);
 						break;
 
 					case CMP_R:
-						arm::sub(r.cpsr, r.loReg[Rd3_0], r.loReg[Rs3_3]);
+						emu::sub(r.cpsr, r.loReg[Rd3_0], r.loReg[Rs3_3]);
 						break;
 
 					case CMN:
-						arm::add(r.cpsr, r.loReg[Rd3_0], r.loReg[Rs3_3]);
+						emu::add(r.cpsr, r.loReg[Rd3_0], r.loReg[Rs3_3]);
 						break;
 
 					case ORR:
-						arm::orrInto(r.cpsr, r.loReg[Rd3_0], r.loReg[Rs3_3]);
+						emu::orrInto(r.cpsr, r.loReg[Rd3_0], r.loReg[Rs3_3]);
 						break;
 
 						//Multiply takes 1 + n cycles on ARM7
@@ -392,51 +393,51 @@ namespace arm::thumb {
 						} else
 							cycles += 3;
 
-						arm::mulInto(r.cpsr, r.loReg[Rd3_0], r.loReg[Rs3_3]);
+						emu::mulInto(r.cpsr, r.loReg[Rd3_0], r.loReg[Rs3_3]);
 						break;
 
 					case BIC:
-						arm::andInto(r.cpsr, r.loReg[Rd3_0], ~r.loReg[Rs3_3]);
+						emu::andInto(r.cpsr, r.loReg[Rd3_0], ~r.loReg[Rs3_3]);
 						break;
 
 					case MVN:
-						arm::mov(r.cpsr, r.loReg[Rd3_0], ~r.loReg[Rs3_3]);
+						emu::mov(r.cpsr, r.loReg[Rd3_0], ~r.loReg[Rs3_3]);
 						break;
 
 					case ADD_LO_HI:
-						arm::addTo<false>(r.cpsr, r.loReg[Rd3_0], r.registers[m[Rs3_3]]);
+						emu::addTo<PSR, u32, false>(r.cpsr, r.loReg[Rd3_0], r.registers[m[Rs3_3]]);
 						break;
 
 					case ADD_HI_LO:
-						arm::addTo<false>(r.cpsr, r.registers[m[Rd3_0]], r.loReg[Rs3_3]);
+						emu::addTo<PSR, u32, false>(r.cpsr, r.registers[m[Rd3_0]], r.loReg[Rs3_3]);
 						goto checkPc;
 
 					case ADD_HI_HI:
-						arm::addTo<false>(r.cpsr, r.registers[m[Rd3_0]], r.registers[m[Rs3_3]]);
+						emu::addTo<PSR, u32, false>(r.cpsr, r.registers[m[Rd3_0]], r.registers[m[Rs3_3]]);
 						goto checkPc;
 
 					case CMP_LO_HI:
-						arm::sub(r.cpsr, r.loReg[Rd3_0], r.registers[m[Rs3_3]]);
+						emu::sub(r.cpsr, r.loReg[Rd3_0], r.registers[m[Rs3_3]]);
 						break;
 
 					case CMP_HI_LO:
-						arm::sub(r.cpsr, r.registers[m[Rd3_0]], r.loReg[Rs3_3]);
+						emu::sub(r.cpsr, r.registers[m[Rd3_0]], r.loReg[Rs3_3]);
 						break;
 
 					case CMP_HI_HI:
-						arm::sub(r.cpsr, r.registers[m[Rd3_0]], r.registers[m[Rs3_3]]);
+						emu::sub(r.cpsr, r.registers[m[Rd3_0]], r.registers[m[Rs3_3]]);
 						break;
 
 					case MOV_LO_HI:
-						arm::mov<false>(r.cpsr, r.loReg[Rd3_0], r.registers[m[Rs3_3]]);
+						emu::mov<PSR, u32, false>(r.cpsr, r.loReg[Rd3_0], r.registers[m[Rs3_3]]);
 						break;
 
 					case MOV_HI_LO:
-						arm::mov<false>(r.cpsr, r.registers[m[Rd3_0]], r.loReg[Rs3_3]);
+						emu::mov<PSR, u32, false>(r.cpsr, r.registers[m[Rd3_0]], r.loReg[Rs3_3]);
 						goto checkPc;
 
 					case MOV_HI_HI:
-						arm::mov<false>(r.cpsr, r.registers[m[Rd3_0]], r.registers[m[Rs3_3]]);
+						emu::mov<PSR, u32, false>(r.cpsr, r.registers[m[Rd3_0]], r.registers[m[Rs3_3]]);
 						goto checkPc;
 
 					checkPc:

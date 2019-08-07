@@ -1,6 +1,6 @@
 #pragma once
 #include "registers.hpp"
-#include "stack.hpp"
+#include "emu/memory.hpp"
 
 namespace arm {
 
@@ -50,7 +50,7 @@ namespace arm {
 		//					Add 1 to the address if thumb mode is enabled.
 		//@param[in] mode; in what mode the emulator is launched (default = user)
 
-		Armulator(const List<Memory32::Range> &ranges);
+		Armulator(const List<emu::Memory32::Range> &ranges);
 		~Armulator() = default;
 
 		Armulator(const Armulator&) = delete;
@@ -62,8 +62,7 @@ namespace arm {
 		static void printPSR(PSR psr);				//Print the PSR
 
 		Registers r;
-
-		Memory32 memory;
+		emu::Memory32 memory;
 
 	private:
 

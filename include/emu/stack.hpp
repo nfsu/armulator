@@ -2,7 +2,7 @@
 #include "types/types.hpp"
 #include "memory.hpp"
 
-namespace arm {
+namespace emu {
 
 	//The stack class; taking a type T (can even be floats)
 	//AddressSpace is the type for the address space

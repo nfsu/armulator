@@ -12,7 +12,7 @@
 #include <sys/mman.h>
 #endif
 
-namespace arm {
+namespace emu {
 
 	template<typename AddressType>
 	struct MemoryRange {
@@ -30,8 +30,7 @@ namespace arm {
 	};
 
 	template<
-		typename AddressType, typename =
-		std::enable_if<std::is_unsigned_v<AddressType> && std::is_integral_v<AddressType>>
+		typename AddressType
 	>
 	class Memory {
 
@@ -108,15 +107,15 @@ namespace arm {
 
 	#ifdef _WIN32
 
-		template<typename AddressType, typename T>
-		void Memory<AddressType, T>::allocate() {
+		template<typename AddressType>
+		void Memory<AddressType>::allocate() {
 
 			if (!VirtualAlloc(LPVOID(mapping), mapping, MEM_RESERVE, PAGE_READWRITE))
 				oic::System::log()->fatal("Couldn't reserve memory");
 		}
 
-		template<typename AddressType, typename T>
-		void Memory<AddressType, T>::allocate(Range &r) {
+		template<typename AddressType>
+		void Memory<AddressType>::allocate(Range &r) {
 
 			usz map = mapping | r.start;
 
@@ -131,22 +130,22 @@ namespace arm {
 				oic::System::log()->fatal("Couldn't protect memory");
 		}
 
-		template<typename AddressType, typename T>
-		void Memory<AddressType, T>::free() {
+		template<typename AddressType>
+		void Memory<AddressType>::free() {
 			VirtualFree(LPVOID(mapping), 0, MEM_RELEASE);
 		}
 
 	#else
 
-		template<typename AddressType, typename T>
-		void Memory<AddressType, T>::allocate() {
+		template<typename AddressType>
+		void Memory<AddressType>::allocate() {
 
 			if(!mmap((void*)mapping, mapping, PROT_NONE, MAP_PRIVATE | MAP_FIXED, 0))
 				oic::System::log()->fatal("Couldn't reserve memory");
 		}
 
-		template<typename AddressType, typename T>
-		void Memory<AddressType, T>::allocate(Range &r) {
+		template<typename AddressType>
+		void Memory<AddressType>::allocate(Range &r) {
 
 			usz map = mapping | r.start;
 			
@@ -159,8 +158,8 @@ namespace arm {
 				oic::System::log()->fatal("Couldn't protect memory");
 		}
 
-		template<typename AddressType, typename T>
-		void Memory<AddressType, T>::allocate() {
+		template<typename AddressType>
+		void Memory<AddressType>::allocate() {
 			munmap((void*)mapping, mapping);
 		}
 

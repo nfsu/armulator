@@ -65,6 +65,17 @@ namespace arm {
 		__forceinline void zero(bool b) { b ? value |= zMask : value &= ~zMask; }
 		__forceinline void negative(bool b) { b ? value |= nMask : value &= ~nMask; }
 
+		__forceinline void setCodes(u32 a) {
+			negative(i32(a) < 0);
+			zero(a == 0);
+		}
+
+		__forceinline void setALU(u32 a, u32 b, u32 c) {
+			overflow((a & i32_MIN) == (b & i32_MIN) && (a & i32_MIN) != (c & i32_MIN));
+			carry(c < a);
+			setCodes(c);
+		}
+
 		//Mode setter (2i, 2j)
 
 		//and rx, notMask
