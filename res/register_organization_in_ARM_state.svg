@@ -1,8 +1,10 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+
 <!-- 
 	Pulled from http://infocenter.arm.com/help/topic/com.arm.doc.ddi0229c/graphics/register_organization_in_ARM_state.svg as a backup.
 	All rights reserved for https://infocenter.arm.com
 -->
-<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+
 <!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.0//EN" "http://www.w3.org/TR/2001/REC-SVG-20010904/DTD/svg10.dtd">
 <!-- Fixed up by svgfix.xsl 1.1  -->
 <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:ev="http://www.w3.org/2001/xml-events" width="745.5" height="757.75" viewBox="88 177 426 433">
