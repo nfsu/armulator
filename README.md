@@ -122,7 +122,10 @@ c == 0;
 //Negative
 c & i32_MIN;
 
-//TODO: Carry
+//Carry
+//Depends on the current instruction; most of the time this is true if the number looped around (ADD/SUB)
+//However, shifts check the bit that is going to be shifted out.
+//5 >> 1 = 4 C 1, 4 >> 1 = 2 C 0.
 
 //Overflow
 (a & i32_MIN) == (b & i32_MIN) && (c & i32_MIN) != (a & i32_MIN)
@@ -166,7 +169,7 @@ r0-r15 and the SPSR are mapped to physical registers. These registers depend on 
 
 
 
-![3](D:/programming/repos/nfse/docs/res/register_organization_in_ARM_state.svg)
+![3](docs/res/register_organization_in_ARM_state.svg)
 
 **Figure 1: Register organization in ARM state** [[3](http://infocenter.arm.com/help/topic/com.arm.doc.ddi0229c/graphics/register_organization_in_ARM_state.svg)]
 
@@ -177,7 +180,8 @@ The SPSR, SP and LR are always affected and for FIQ the r8-r12 registers are as 
 ```cpp
 struct RegisterData {
     
-	u32 sysUsr[15];
+    	u32 loReg[8];
+	u32 sysUsr[7];
 	u32 pc;
 	u32 fiq[7];
 	u32 irq[2];
