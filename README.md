@@ -169,7 +169,7 @@ r0-r15 and the SPSR are mapped to physical registers. These registers depend on 
 
 
 
-![3](docs/res/register_organization_in_ARM_state.svg)
+![3](res/register_organization_in_ARM_state.svg)
 
 **Figure 1: Register organization in ARM state** [[3](http://infocenter.arm.com/help/topic/com.arm.doc.ddi0229c/graphics/register_organization_in_ARM_state.svg)]
 
